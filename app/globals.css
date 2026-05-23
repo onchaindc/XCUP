@@ -122,6 +122,18 @@ canvas {
   opacity: 0.45;
 }
 
+.x-squad-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(24, 227, 189, 0.06) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(66, 165, 255, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 20% 10%, rgba(66, 165, 255, 0.16), transparent 20rem),
+    radial-gradient(circle at 78% 30%, rgba(24, 227, 189, 0.13), transparent 18rem);
+  background-size: 54px 54px, 54px 54px, auto, auto;
+  mask-image: linear-gradient(180deg, black 0%, transparent 100%);
+}
+
 .x-reference-ribbon {
   position: absolute;
   border-radius: 28px;
@@ -189,10 +201,48 @@ canvas {
   filter: blur(14px);
 }
 
+.x-motion-drift {
+  animation: x-drift 14s ease-in-out infinite alternate;
+}
+
+.x-motion-drift-slow {
+  animation: x-drift-slow 18s ease-in-out infinite alternate;
+}
+
+.x-motion-ball {
+  animation: x-ball-float 3.2s ease-in-out infinite alternate;
+}
+
 .x-loader-scene {
   position: relative;
   width: min(72vw, 30rem);
   aspect-ratio: 1;
+}
+
+.x-loader-title {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  gap: 0.45rem;
+  text-align: center;
+}
+
+.x-loader-title span {
+  color: #18e3bd;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.x-loader-title strong {
+  color: #ffffff;
+  font-size: clamp(1.5rem, 6vw, 2.8rem);
+  font-weight: 900;
+  line-height: 1;
 }
 
 .x-loader-goal,
@@ -307,6 +357,8 @@ canvas {
     translate(8rem)
     scale(calc(0.55 + (var(--i) * 0.02)));
   opacity: calc(1 - (var(--i) * 0.03));
+  animation: x-particle-pulse 1.9s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -0.05s);
 }
 
 @keyframes x-ball-float {
@@ -315,6 +367,35 @@ canvas {
   }
   to {
     transform: translateY(0.4rem) scale(1.02);
+  }
+}
+
+@keyframes x-drift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(-28deg);
+  }
+  to {
+    transform: translate3d(0.8rem, -0.6rem, 0) rotate(-24deg);
+  }
+}
+
+@keyframes x-drift-slow {
+  from {
+    transform: translate3d(0, 0, 0) rotate(-28deg);
+  }
+  to {
+    transform: translate3d(-0.7rem, 0.5rem, 0) rotate(-31deg);
+  }
+}
+
+@keyframes x-particle-pulse {
+  from {
+    filter: saturate(0.8);
+    opacity: 0.35;
+  }
+  to {
+    filter: saturate(1.35);
+    opacity: 1;
   }
 }
 

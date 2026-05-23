@@ -3,239 +3,97 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
-  ArrowUpRight,
-  BadgeCheck,
+  ArrowRight,
+  Brain,
   Bot,
-  Cable,
-  CircleDollarSign,
-  Clock3,
-  Coins,
-  Copy,
   Crown,
-  Flame,
   Gamepad2,
-  Goal,
-  Medal,
-  MessageCircle,
-  Network,
-  PlugZap,
+  Globe2,
+  Landmark,
+  Newspaper,
   Radio,
   ShieldCheck,
-  Sparkles,
   Swords,
-  Ticket,
+  Target,
   Trophy,
   Users,
-  Wallet,
-  Zap
+  Wallet
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
-import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
+import type { LiveSportEvent, SportsNewsItem } from "@/lib/sports";
+import { xLayerTestnet } from "@/lib/arc";
 import { useNetworkStatus } from "@/lib/use-network-status";
 import { shortAddress } from "@/lib/utils";
 
-type TrackId = "arena" | "markets" | "social" | "gamefi" | "agent" | "proof";
-type ProofStatus = "prepared" | "signed" | "settled";
-
-type Fixture = {
-  id: string;
-  stage: string;
-  teams: [string, string];
-  kickoff: string;
-  liquidity: string;
-  sentiment: string;
-  agentEdge: string;
-};
-
-type Market = {
-  id: string;
-  fixtureId: string;
-  question: string;
-  odds: [number, number];
-  volume: string;
-  settlement: string;
-  category: "prediction" | "side quest" | "agent";
-};
-
-type ProofEvent = {
-  id: string;
-  title: string;
-  detail: string;
-  payloadHash: string;
-  status: ProofStatus;
-  createdAt: string;
-};
-
-const tracks: Array<{ id: TrackId; label: string; icon: LucideIcon }> = [
-  { id: "arena", label: "Arena", icon: Trophy },
-  { id: "markets", label: "Markets", icon: CircleDollarSign },
-  { id: "social", label: "SocialFi", icon: Users },
-  { id: "gamefi", label: "GameFi", icon: Gamepad2 },
-  { id: "agent", label: "Agent", icon: Bot },
-  { id: "proof", label: "Proof", icon: ShieldCheck }
+const topNav = [
+  { label: "Matches", href: "/markets", icon: Radio },
+  { label: "Arena", href: "/", icon: Trophy },
+  { label: "Markets", href: "/markets", icon: Activity },
+  { label: "GameFi", href: "/gamefi", icon: Gamepad2 },
+  { label: "Squads", href: "/#squads", icon: Users },
+  { label: "Agent", href: "/#agent", icon: Bot }
 ];
 
-const fixtures: Fixture[] = [
+const squadxSquads = [
   {
-    id: "ng-arg",
-    stage: "Group A",
-    teams: ["Nigeria", "Argentina"],
-    kickoff: "Jun 12, 20:00 UTC",
-    liquidity: "$84.6K",
-    sentiment: "64% Eagles",
-    agentEdge: "+7.4% counter-press volatility"
+    name: "Lagos Ultras",
+    motto: "Counter-press every market.",
+    role: "Captain-led",
+    level: 18,
+    elo: 1842,
+    treasury: "412 OKB",
+    accuracy: "68%",
+    territory: "West Africa",
+    accent: "#18e3bd"
   },
   {
-    id: "br-fr",
-    stage: "Quarter Final",
-    teams: ["Brazil", "France"],
-    kickoff: "Jun 28, 18:00 UTC",
-    liquidity: "$132.9K",
-    sentiment: "52% Brazil",
-    agentEdge: "low draw risk, high goal delta"
+    name: "Catalan Signal",
+    motto: "Possession models, ruthless timing.",
+    role: "Strategist DAO",
+    level: 21,
+    elo: 1916,
+    treasury: "588 OKB",
+    accuracy: "72%",
+    territory: "Iberia",
+    accent: "#42a5ff"
   },
   {
-    id: "us-jp",
-    stage: "Round of 16",
-    teams: ["USA", "Japan"],
-    kickoff: "Jun 21, 23:00 UTC",
-    liquidity: "$61.2K",
-    sentiment: "58% Samurai Blue",
-    agentEdge: "late-game stamina swing"
+    name: "North London War Room",
+    motto: "Scout reports before sentiment moves.",
+    role: "Analyst stack",
+    level: 16,
+    elo: 1764,
+    treasury: "336 OKB",
+    accuracy: "64%",
+    territory: "UK",
+    accent: "#f5a524"
   }
 ];
 
-const markets: Market[] = [
-  {
-    id: "m1",
-    fixtureId: "ng-arg",
-    question: "Nigeria to score first?",
-    odds: [42, 58],
-    volume: "$18.4K",
-    settlement: "Final whistle oracle + ref attestation",
-    category: "prediction"
-  },
-  {
-    id: "m2",
-    fixtureId: "ng-arg",
-    question: "Match total over 2.5 goals?",
-    odds: [61, 39],
-    volume: "$26.8K",
-    settlement: "FIFA score feed + agent dispute window",
-    category: "agent"
-  },
-  {
-    id: "m3",
-    fixtureId: "br-fr",
-    question: "Brazil win in regulation?",
-    odds: [51, 49],
-    volume: "$41.7K",
-    settlement: "Result oracle, no shootout",
-    category: "prediction"
-  },
-  {
-    id: "m4",
-    fixtureId: "us-jp",
-    question: "Japan completes 500+ passes?",
-    odds: [47, 53],
-    volume: "$9.9K",
-    settlement: "Stats feed with fan challenge bonus",
-    category: "side quest"
-  }
+const squadWars = [
+  { match: "Lagos Ultras vs Catalan Signal", prize: "Founder Badge", status: "Arming strategy" },
+  { match: "North London War Room vs Samba Desk", prize: "Treasury boost", status: "Scout phase" },
+  { match: "Madrid Block vs City Chain", prize: "Prestige XP", status: "Pending live fixture" }
 ];
 
-const socialPosts = [
-  {
-    squad: "Lagos North Stand",
-    handle: "@naijacurve",
-    message: "The market says Argentina early pressure. Our squad is backing a 20-minute clean sheet quest.",
-    heat: "12.8K XP"
-  },
-  {
-    squad: "Samba DAO",
-    handle: "@verdechain",
-    message: "Golden Boot relic mint opens when Brazil clears 65% attack share. Watch the agent trigger.",
-    heat: "8.1K XP"
-  },
-  {
-    squad: "Blue Samurai Lab",
-    handle: "@shibuyaultras",
-    message: "Pass-count side quest is quietly mispriced. We are staking squad XP, not just OKB.",
-    heat: "5.6K XP"
-  }
+const agentInsights = [
+  "Public sentiment is overheating favorites; wait for live pressure before joining the crowd.",
+  "Squads with balanced Captain, Analyst, and Scout roles convert 19% more prediction XP.",
+  "Treasury-backed wars should activate only on high-confidence live feeds, not stale schedules."
 ];
-
-const collectibles = [
-  {
-    title: "Momentum Passport",
-    meta: "Dynamic NFT",
-    detail: "Evolves with predictions, squad votes, and verified match streaks.",
-    icon: Ticket
-  },
-  {
-    title: "Golden Boot Relic",
-    meta: "Limited Drop",
-    detail: "Mint gate unlocks from scorer markets and agent-confirmed milestones.",
-    icon: Medal
-  },
-  {
-    title: "Ultra Captain Badge",
-    meta: "Soulbound",
-    detail: "Ranks fans who drive clean settlement volume and squad growth.",
-    icon: Crown
-  }
-];
-
-const gameLoops = [
-  {
-    title: "Penalty Duel",
-    prize: "2.4K XP",
-    body: "Pick keeper direction after staking a market ticket. Winning streaks boost NFT metadata.",
-    icon: Goal
-  },
-  {
-    title: "Streak Ladder",
-    prize: "Mint allowlist",
-    body: "Build a matchday streak across predictions, chants, and agent quests.",
-    icon: Flame
-  },
-  {
-    title: "Squad Raid",
-    prize: "Fee rebate",
-    body: "Coordinate 11 fans into one on-chain pool and split quest rewards by contribution.",
-    icon: Swords
-  }
-];
-
-const judgingMap = [
-  ["Innovation", "A single World Cup loop where markets, squads, NFTs, mini-games, and agents reinforce each other."],
-  ["Market potential", "Matchday traffic converts into wallet connects, prediction tickets, mints, squad quests, and repeat XP loops."],
-  ["Completion", "X Layer wallet/network flows, contract scaffold, proof hashes, and demo-ready actions are visible in-product."]
-];
-
-const contractAddress = process.env.NEXT_PUBLIC_XCUP_ARENA_ADDRESS || "";
 
 export function XCupApp() {
   const [showLoader, setShowLoader] = useState(true);
-  const [activeTrack, setActiveTrack] = useState<TrackId>("arena");
-  const [selectedFixtureId, setSelectedFixtureId] = useState(fixtures[0].id);
-  const [agentMode, setAgentMode] = useState<"signal" | "risk" | "growth">("signal");
-  const [agentReply, setAgentReply] = useState("I am watching liquidity shifts, fan heat, and match-state risk. Choose a market and I will prepare a verifiable action.");
-  const [actionStatus, setActionStatus] = useState("");
-  const [proofs, setProofs] = useState<ProofEvent[]>([
-    {
-      id: "genesis",
-      title: "Arena initialized",
-      detail: "Local proof lane ready for X Layer contract deployment.",
-      payloadHash: "0x7c5d...kickoff",
-      status: "prepared",
-      createdAt: "Now"
-    }
-  ]);
+  const [events, setEvents] = useState<LiveSportEvent[]>([]);
+  const [news, setNews] = useState<SportsNewsItem[]>([]);
+  const [loadingFeeds, setLoadingFeeds] = useState(true);
+  const [refreshingFeeds, setRefreshingFeeds] = useState(false);
+  const [feedError, setFeedError] = useState("");
+  const feedHydratedRef = useRef(false);
   const { address, isConnected } = useAccount();
   const { connectors, connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
@@ -245,172 +103,107 @@ export function XCupApp() {
     chainId: xLayerTestnet.id,
     query: { enabled: Boolean(address) }
   });
-  const selectedFixture = fixtures.find((fixture) => fixture.id === selectedFixtureId) ?? fixtures[0];
-  const selectedMarkets = markets.filter((market) => market.fixtureId === selectedFixture.id);
+  const liveEvents = events.filter((event) => event.status.state === "in");
+  const featured = liveEvents[0] ?? null;
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setShowLoader(false), 2600);
+    const timer = window.setTimeout(() => setShowLoader(false), 2200);
     return () => window.clearTimeout(timer);
   }, []);
 
-  const aggregate = useMemo(
-    () => ({
-      liquidity: "$289K",
-      fanXp: "1.8M",
-      mints: "42.6K",
-      proofs: proofs.length.toString()
-    }),
-    [proofs.length]
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFeeds() {
+      if (feedHydratedRef.current) {
+        setRefreshingFeeds(true);
+      } else {
+        setLoadingFeeds(true);
+      }
+      setFeedError("");
+      try {
+        const [sportsResponse, newsResponse] = await Promise.all([
+          fetch("/api/sports/live", { cache: "no-store" }),
+          fetch("/api/sports/news", { cache: "no-store" })
+        ]);
+        if (!sportsResponse.ok || !newsResponse.ok) {
+          throw new Error("Live feed is temporarily unavailable.");
+        }
+        const sportsData = (await sportsResponse.json()) as { events: LiveSportEvent[] };
+        const newsData = (await newsResponse.json()) as { items: SportsNewsItem[] };
+        if (!cancelled) {
+          setEvents(sportsData.events);
+          setNews(newsData.items);
+          feedHydratedRef.current = true;
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setFeedError(error instanceof Error ? error.message : "Unable to load live sports data.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingFeeds(false);
+          setRefreshingFeeds(false);
+        }
+      }
+    }
+
+    void loadFeeds();
+    const interval = window.setInterval(() => void loadFeeds(), 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const stats = useMemo(
+    () => [
+      { label: "Live Events", value: String(liveEvents.length), icon: Radio },
+      { label: "Tracked Games", value: String(events.length), icon: Globe2 },
+      { label: "Headlines", value: String(news.length), icon: Newspaper },
+      { label: "X Layer", value: isConnected && network.onArc ? "Ready" : "Testnet", icon: ShieldCheck }
+    ],
+    [events.length, isConnected, liveEvents.length, network.onArc, news.length]
   );
 
   async function connectWallet() {
-    setActionStatus("");
-    try {
-      const connector = connectors[0];
-      if (!connector) {
-        setActionStatus("No injected or WalletConnect provider was detected.");
-        return;
-      }
-      await connectAsync({ connector, chainId: xLayerTestnet.id });
-      setActionStatus("Wallet connected. X Layer network check is active.");
-    } catch (error) {
-      setActionStatus(error instanceof Error ? error.message : "Wallet connection failed.");
+    const connector = connectors[0];
+    if (!connector) {
+      return;
     }
-  }
-
-  async function addXLayer() {
-    setActionStatus("");
-    try {
-      await network.addNetwork();
-      setActionStatus("X Layer Testnet was requested in your wallet.");
-    } catch (error) {
-      setActionStatus(error instanceof Error ? error.message : "Unable to add X Layer.");
-    }
-  }
-
-  async function recordProof(title: string, detail: string, payload: Record<string, unknown>, status: ProofStatus = "prepared") {
-    const encoded = new TextEncoder().encode(JSON.stringify({ title, detail, payload, timestamp: new Date().toISOString() }));
-    const digest = await crypto.subtle.digest("SHA-256", encoded);
-    const hash = `0x${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-    const nextProof: ProofEvent = {
-      id: crypto.randomUUID(),
-      title,
-      detail,
-      payloadHash: hash,
-      status,
-      createdAt: new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date())
-    };
-    setProofs((items) => [nextProof, ...items].slice(0, 8));
-    return nextProof;
-  }
-
-  async function preparePrediction(market: Market, side: "yes" | "no") {
-    const fixture = fixtures.find((item) => item.id === market.fixtureId) ?? selectedFixture;
-    await recordProof(
-      "Prediction ticket prepared",
-      `${fixture.teams.join(" vs ")} | ${market.question} | ${side.toUpperCase()}`,
-      {
-        fixtureId: fixture.id,
-        marketId: market.id,
-        side,
-        chainId: xLayerTestnet.id,
-        contractAddress: contractAddress || "pending"
-      }
-    );
-    setActionStatus(contractAddress ? "Ticket payload prepared. Contract write can be connected next." : "Ticket proof prepared locally. Deploy the arena contract and set NEXT_PUBLIC_XCUP_ARENA_ADDRESS to submit on-chain.");
-    setActiveTrack("proof");
-  }
-
-  async function mintCollectible(title: string) {
-    await recordProof(
-      "NFT mint intent",
-      `${title} mint gate prepared for ${shortAddress(address)}`,
-      {
-        collectible: title,
-        fan: address ?? "guest",
-        chainId: xLayerTestnet.id
-      },
-      isConnected ? "signed" : "prepared"
-    );
-    setActionStatus(isConnected ? `${title} mint intent signed locally. Wire contract mint next.` : `Connect a wallet to sign the ${title} mint intent.`);
-    setActiveTrack("proof");
-  }
-
-  async function runAgent() {
-    const modeCopy = {
-      signal: "Signal: liquidity is clustering around first-goal and over-2.5 markets. Best demo action is to prepare a small ticket, then mint Momentum Passport metadata from the same proof.",
-      risk: "Risk: keep settlement language honest. Do not claim live FIFA oracle execution until the deployed contract and oracle address are published in the README.",
-      growth: "Growth: squads are the viral wedge. A fan can join a squad, share a prediction receipt, and invite 10 matchday viewers into one X Layer wallet path."
-    }[agentMode];
-    setAgentReply(modeCopy);
-    await recordProof("Agent briefing generated", `${selectedFixture.teams.join(" vs ")} | ${agentMode}`, {
-      fixtureId: selectedFixture.id,
-      mode: agentMode,
-      reply: modeCopy
-    });
+    await connectAsync({ connector, chainId: xLayerTestnet.id });
   }
 
   return (
     <main className="x-cup-bg min-h-[100dvh] overflow-x-clip text-white">
       <AnimatePresence>{showLoader ? <KickoffLoader onSkip={() => setShowLoader(false)} /> : null}</AnimatePresence>
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[92rem] flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-8">
-        <AppHeader
+        <TopHeader
           address={address}
           isConnected={isConnected}
+          isPending={isPending}
           balance={formattedBalance}
-          networkBadge={network.badge}
-          networkSyncing={network.syncing || isPending}
           onConnect={() => void connectWallet()}
           onDisconnect={() => disconnect()}
-          onAddNetwork={() => void addXLayer()}
         />
-        {actionStatus ? (
-          <div className="mb-3 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-semibold text-white/84">
-            {actionStatus}
-          </div>
-        ) : null}
-        <section className="grid flex-1 gap-4 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)] xl:grid-cols-[minmax(0,1.18fr)_minmax(24rem,0.82fr)]">
+          <Hero
+            featured={featured}
+            stats={stats}
+            loading={loadingFeeds}
+            feedError={feedError}
+            liveCount={liveEvents.length}
+            news={news}
+            refreshing={refreshingFeeds}
+          />
+        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_25rem]">
           <div className="grid gap-4">
-            <HeroCommand
-              aggregate={aggregate}
-              selectedFixture={selectedFixture}
-              networkOk={network.onArc || !isConnected}
-              onAddNetwork={() => void addXLayer()}
-            />
-            <TrackTabs activeTrack={activeTrack} onChange={setActiveTrack} />
-            {activeTrack === "arena" ? (
-              <ArenaPanel
-                fixtures={fixtures}
-                selectedFixtureId={selectedFixtureId}
-                onSelectFixture={setSelectedFixtureId}
-                selectedMarkets={selectedMarkets}
-                onPrediction={(market, side) => void preparePrediction(market, side)}
-              />
-            ) : null}
-            {activeTrack === "markets" ? <MarketsPanel onPrediction={(market, side) => void preparePrediction(market, side)} /> : null}
-            {activeTrack === "social" ? <SocialPanel onMint={(title) => void mintCollectible(title)} /> : null}
-            {activeTrack === "gamefi" ? <GameFiPanel /> : null}
-            {activeTrack === "agent" ? (
-              <AgentPanel
-                agentMode={agentMode}
-                setAgentMode={setAgentMode}
-                agentReply={agentReply}
-                onRun={() => void runAgent()}
-              />
-            ) : null}
-            {activeTrack === "proof" ? <ProofPanel proofs={proofs} /> : null}
+            <LiveBoard events={liveEvents} loading={loadingFeeds} refreshing={refreshingFeeds} />
+            <SquadSection />
           </div>
           <aside className="grid content-start gap-4">
-            <AgentCard
-              fixture={selectedFixture}
-              agentMode={agentMode}
-              setAgentMode={setAgentMode}
-              agentReply={agentReply}
-              onRun={() => void runAgent()}
-            />
-            <ProofRail proofs={proofs} onOpenProof={() => setActiveTrack("proof")} />
-            <JudgingCard />
+            <Headlines news={news} loading={loadingFeeds} refreshing={refreshingFeeds} />
+            <AgentPanel featured={featured} />
           </aside>
         </section>
       </div>
@@ -418,46 +211,39 @@ export function XCupApp() {
   );
 }
 
-function AppHeader({
+export function TopHeader({
   address,
   isConnected,
+  isPending,
   balance,
-  networkBadge,
-  networkSyncing,
   onConnect,
-  onDisconnect,
-  onAddNetwork
+  onDisconnect
 }: {
   address?: `0x${string}`;
   isConnected: boolean;
+  isPending: boolean;
   balance: string;
-  networkBadge: { label: string; tone: "good" | "danger" | "syncing" | "muted" };
-  networkSyncing: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
-  onAddNetwork: () => void;
 }) {
   return (
-    <header className="mb-4 flex min-w-0 items-center justify-between gap-3">
-      <XLayerLockup />
-      <div className="flex min-w-0 items-center gap-2">
-        <span
-          className={`hidden items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold sm:flex ${
-            networkBadge.tone === "danger"
-              ? "border-[#ff5c39]/35 bg-[#ff5c39]/10 text-[#ff9c82]"
-              : networkBadge.tone === "good"
-                ? "border-[#18e3bd]/30 bg-[#18e3bd]/10 text-[#80ffe2]"
-                : "border-white/12 bg-white/[0.06] text-white/72"
-          }`}
-        >
-          <span className={`h-2 w-2 rounded-full ${networkSyncing ? "animate-pulse bg-[#18e3bd]" : networkBadge.tone === "danger" ? "bg-[#ff5c39]" : "bg-[#18e3bd]"}`} />
-          {networkBadge.label}
-        </span>
-        {networkBadge.tone === "danger" ? (
-          <button className="hidden rounded-lg border border-[#ff5c39]/35 bg-[#ff5c39]/10 px-3 py-2 text-xs font-black text-[#ff9c82] transition hover:bg-[#ff5c39]/18 md:inline-flex" type="button" onClick={onAddNetwork}>
-            Add X Layer
-          </button>
-        ) : null}
+    <header className="sticky top-0 z-50 mb-4 border-b border-white/10 bg-[#030409]/90 py-3 backdrop-blur-xl">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <Link className="flex min-w-0 items-center gap-3" href="/">
+          <XLayerMark className="h-9 w-9 shrink-0" />
+          <span className="min-w-0">
+            <span className="block truncate text-base font-black text-white">SquadX</span>
+            <span className="block truncate text-[11px] font-bold uppercase tracking-[0.22em] text-white/42">World Cup on X Layer</span>
+          </span>
+        </Link>
+        <nav className="hidden items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 lg:flex">
+          {topNav.map((item) => (
+            <Link key={item.label} className="flex min-h-10 items-center gap-2 rounded-md px-3 text-xs font-black text-white/62 transition hover:bg-white/10 hover:text-white" href={item.href}>
+              <item.icon size={15} aria-hidden="true" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
         {isConnected ? (
           <button className="flex max-w-[11.5rem] items-center gap-2 rounded-lg border border-white/12 bg-white/[0.07] px-3 py-2 text-left text-xs font-bold text-white transition hover:bg-white/12" type="button" onClick={onDisconnect}>
             <Wallet size={16} aria-hidden="true" />
@@ -467,44 +253,25 @@ function AppHeader({
             </span>
           </button>
         ) : (
-          <button className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-[#18e3bd]" type="button" onClick={onConnect}>
+          <button className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-[#18e3bd]" type="button" onClick={onConnect} disabled={isPending}>
             <Wallet size={16} aria-hidden="true" />
-            Connect
+            {isPending ? "Connecting" : "Connect"}
           </button>
         )}
       </div>
+      <nav className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 sm:grid-cols-6 lg:hidden">
+        {topNav.map((item) => (
+          <Link key={item.label} className="flex min-h-10 items-center justify-center gap-1 rounded-md px-1 text-[11px] font-black text-white/62 transition hover:bg-white/10 hover:text-white" href={item.href}>
+            <item.icon size={14} aria-hidden="true" />
+            {item.label}
+          </Link>
+        ))}
+      </nav>
     </header>
   );
 }
 
-function XLayerLockup() {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <XLayerMark className="h-9 w-9 shrink-0" />
-      <div className="min-w-0">
-        <p className="truncate text-base font-black tracking-normal text-white">X Cup Edition</p>
-        <p className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-white/42">World Cup on X Layer</p>
-      </div>
-    </div>
-  );
-}
-
-function XLayerMark({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 40 40" role="img" aria-label="X Layer">
-      <rect width="8" height="8" x="4" y="4" fill="currentColor" />
-      <rect width="8" height="8" x="16" y="4" fill="currentColor" opacity="0.72" />
-      <rect width="8" height="8" x="4" y="16" fill="currentColor" opacity="0.72" />
-      <rect width="8" height="8" x="28" y="4" fill="currentColor" opacity="0.42" />
-      <rect width="8" height="8" x="16" y="16" fill="currentColor" />
-      <rect width="8" height="8" x="28" y="16" fill="currentColor" opacity="0.72" />
-      <rect width="8" height="8" x="4" y="28" fill="currentColor" opacity="0.42" />
-      <rect width="8" height="8" x="16" y="28" fill="currentColor" opacity="0.72" />
-    </svg>
-  );
-}
-
-function KickoffLoader({ onSkip }: { onSkip: () => void }) {
+export function KickoffLoader({ onSkip }: { onSkip: () => void }) {
   return (
     <motion.div
       className="fixed inset-0 z-[80] grid place-items-center bg-black"
@@ -517,6 +284,10 @@ function KickoffLoader({ onSkip }: { onSkip: () => void }) {
         Skip
       </button>
       <div className="x-loader-scene" aria-hidden="true">
+        <div className="x-loader-title">
+          <span>SquadX</span>
+          <strong>Loading live matchday</strong>
+        </div>
         <div className="x-loader-goal">
           <span />
           <span />
@@ -543,457 +314,347 @@ function KickoffLoader({ onSkip }: { onSkip: () => void }) {
   );
 }
 
-function HeroCommand({
-  aggregate,
-  selectedFixture,
-  networkOk,
-  onAddNetwork
+function Hero({
+  featured,
+  stats,
+  loading,
+  feedError,
+  liveCount,
+  news,
+  refreshing
 }: {
-  aggregate: { liquidity: string; fanXp: string; mints: string; proofs: string };
-  selectedFixture: Fixture;
-  networkOk: boolean;
-  onAddNetwork: () => void;
+  featured: LiveSportEvent | null;
+  stats: Array<{ label: string; value: string; icon: typeof Radio }>;
+  loading: boolean;
+  feedError: string;
+  liveCount: number;
+  news: SportsNewsItem[];
+  refreshing: boolean;
 }) {
+  const leadNews = news[0];
   return (
-    <section className="relative min-h-[27rem] overflow-hidden rounded-lg border border-white/10 bg-black">
+    <section className="relative overflow-hidden rounded-lg border border-white/10 bg-black">
       <div className="absolute inset-0 opacity-90">
         <div className="x-reference-grid" />
-        <div className="x-reference-ribbon x-reference-ribbon-one" />
-        <div className="x-reference-ribbon x-reference-ribbon-two" />
+        <div className="x-reference-ribbon x-reference-ribbon-one x-motion-drift" />
+        <div className="x-reference-ribbon x-reference-ribbon-two x-motion-drift-slow" />
         <div className="x-reference-ribbon x-reference-ribbon-three" />
-        <div className="x-reference-ball" />
+        <div className="x-reference-ball x-motion-ball" />
       </div>
-      <div className="relative z-10 flex min-h-[27rem] flex-col justify-between p-4 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
+      <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="flex min-h-[25rem] flex-col justify-between">
           <div>
-            <p className="text-2xl font-light tracking-normal text-white sm:text-3xl">X Cup Edition</p>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-white/58">
-              One matchday arena for prediction markets, squad trading rooms, dynamic NFT passes, mini-games, and AI-assisted settlement.
+            <p className="text-2xl font-light tracking-normal text-white sm:text-3xl">SquadX</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">
+              AI-powered squad warfare, live football predictions, and onchain reputation built for X Layer.
             </p>
           </div>
-          <div className="hidden rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-right text-xs font-bold text-white/62 sm:block">
-            <p>{xLayerTestnet.name}</p>
-            <p className="text-white/36">Chain {xLayerTestnet.id}</p>
-          </div>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="self-end">
+          <div>
             <div className="mb-4 flex flex-wrap gap-2">
-              {["Prediction Markets", "SocialFi", "NFTs", "GameFi", "AI Agents"].map((item) => (
+              {["Live markets", "Fantasy lineups", "Fan squads", "AI signals"].map((item) => (
                 <span key={item} className="rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs font-bold text-white/70">
                   {item}
                 </span>
               ))}
             </div>
             <h1 className="max-w-3xl text-4xl font-black leading-[1.02] tracking-normal text-white sm:text-5xl lg:text-6xl">
-              Trade the match. Rally the squad. Prove the win.
+              Build your squad. Conquer the World Cup.
             </h1>
             <div className="mt-5 flex flex-wrap gap-2">
-              <button className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-black text-black transition hover:bg-[#18e3bd]" type="button" onClick={networkOk ? undefined : onAddNetwork}>
-                <PlugZap size={16} aria-hidden="true" />
-                {networkOk ? "X Layer Ready" : "Add X Layer"}
-              </button>
-              <a className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-black text-white transition hover:bg-white/12" href={X_LAYER_EXPLORER_URL} target="_blank" rel="noreferrer">
-                <Network size={16} aria-hidden="true" />
-                Explorer
-              </a>
+              <Link className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-black text-black transition hover:bg-[#18e3bd]" href="/markets">
+                Open Markets
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+              <Link className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-black text-white transition hover:bg-white/12" href="/gamefi">
+                Play GameFi
+                <Gamepad2 size={16} aria-hidden="true" />
+              </Link>
             </div>
           </div>
-          <div className="grid content-end gap-2">
-            <MiniStat label="Fixture" value={selectedFixture.teams.join(" / ")} icon={Radio} />
-            <MiniStat label="Liquidity" value={aggregate.liquidity} icon={Coins} />
-            <MiniStat label="Fan XP" value={aggregate.fanXp} icon={Zap} />
-            <MiniStat label="Mints" value={aggregate.mints} icon={Ticket} />
+        </div>
+        <div className="grid content-end gap-3">
+          <div className="rounded-lg border border-white/10 bg-black/55 p-4 backdrop-blur-md">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">
+              {refreshing ? "Refreshing live feed" : liveCount ? "Live now" : loading ? "Syncing feeds" : "Next top event"}
+            </p>
+            <p className="mt-3 text-xl font-black text-white">{featured ? featured.shortName : feedError || leadNews?.title || "No live event available right now"}</p>
+            <p className="mt-2 text-sm leading-6 text-white/58">
+              {featured ? `${featured.league} - ${featured.status.detail}` : leadNews ? "Latest football headline while live markets wait for the next real event." : "Markets only open when a real sports feed returns live events."}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {stats.map((stat) => (
+              <motion.div
+                key={stat.label}
+                className="rounded-lg border border-white/10 bg-black/55 p-3 backdrop-blur-md"
+                animate={{ opacity: [0.75, 1, 0.75] }}
+                transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/42">{stat.label}</p>
+                  <stat.icon size={14} className="text-[#18e3bd]" aria-hidden="true" />
+                </div>
+                <p className="mt-2 truncate text-lg font-black text-white">{stat.value}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
-        <div className="mt-6 flex items-end justify-between gap-4">
-          <XLayerLockup />
-          <div className="text-right text-[11px] font-bold uppercase tracking-[0.2em] text-white/34">Market proof lane: {aggregate.proofs}</div>
-        </div>
       </div>
     </section>
   );
 }
 
-function MiniStat({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
+function LiveBoard({ events, loading, refreshing }: { events: LiveSportEvent[]; loading: boolean; refreshing: boolean }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-black/55 p-3 backdrop-blur-md">
+    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/42">{label}</p>
-        <Icon size={15} className="text-[#18e3bd]" aria-hidden="true" />
-      </div>
-      <p className="mt-2 truncate text-lg font-black text-white">{value}</p>
-    </div>
-  );
-}
-
-function TrackTabs({ activeTrack, onChange }: { activeTrack: TrackId; onChange: (track: TrackId) => void }) {
-  return (
-    <nav className="grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 sm:grid-cols-6">
-      {tracks.map((track) => (
-        <button
-          key={track.id}
-          className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-2 text-xs font-black transition ${
-            activeTrack === track.id ? "bg-white text-black" : "text-white/58 hover:bg-white/[0.07] hover:text-white"
-          }`}
-          type="button"
-          onClick={() => onChange(track.id)}
-        >
-          <track.icon size={15} aria-hidden="true" />
-          <span>{track.label}</span>
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-function ArenaPanel({
-  fixtures,
-  selectedFixtureId,
-  onSelectFixture,
-  selectedMarkets,
-  onPrediction
-}: {
-  fixtures: Fixture[];
-  selectedFixtureId: string;
-  onSelectFixture: (fixtureId: string) => void;
-  selectedMarkets: Market[];
-  onPrediction: (market: Market, side: "yes" | "no") => void;
-}) {
-  return (
-    <section className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
-      <div className="grid gap-2">
-        {fixtures.map((fixture) => (
-          <button
-            key={fixture.id}
-            className={`rounded-lg border p-3 text-left transition ${
-              selectedFixtureId === fixture.id ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]"
-            }`}
-            type="button"
-            onClick={() => onSelectFixture(fixture.id)}
-          >
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] opacity-60">{fixture.stage}</p>
-            <p className="mt-2 text-lg font-black">{fixture.teams.join(" vs ")}</p>
-            <p className="mt-1 text-xs font-semibold opacity-60">{fixture.kickoff}</p>
-          </button>
-        ))}
-      </div>
-      <div className="grid gap-3">
-        {selectedMarkets.map((market) => (
-          <MarketCard key={market.id} market={market} onPrediction={onPrediction} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function MarketsPanel({ onPrediction }: { onPrediction: (market: Market, side: "yes" | "no") => void }) {
-  return (
-    <section className="grid gap-3 lg:grid-cols-2">
-      {markets.map((market) => (
-        <MarketCard key={market.id} market={market} onPrediction={onPrediction} />
-      ))}
-    </section>
-  );
-}
-
-function MarketCard({ market, onPrediction }: { market: Market; onPrediction: (market: Market, side: "yes" | "no") => void }) {
-  const fixture = fixtures.find((item) => item.id === market.fixtureId) ?? fixtures[0];
-
-  return (
-    <article className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">{fixture.teams.join(" vs ")}</p>
-          <h2 className="mt-2 text-xl font-black leading-tight text-white">{market.question}</h2>
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Top Board</p>
+          <h2 className="mt-1 text-2xl font-black text-white">Priority games</h2>
         </div>
-        <span className="shrink-0 rounded-lg border border-white/10 bg-black/28 px-2 py-1 text-[11px] font-black uppercase text-white/58">
-          {market.category}
+        <div className="flex items-center gap-2">
+          {refreshing ? <span className="rounded-lg border border-[#18e3bd]/20 bg-[#18e3bd]/10 px-2 py-1 text-[11px] font-black uppercase text-[#80ffe2]">Syncing</span> : null}
+          <Link className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-black text-white transition hover:bg-white/12" href="/markets">
+            All markets
+            <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {loading && !events.length ? <SkeletonCards count={4} /> : null}
+        {!loading && events.length ? events.slice(0, 6).map((event) => <EventMiniCard key={event.id} event={event} />) : null}
+        {!loading && !events.length ? (
+          <div className="rounded-lg border border-white/10 bg-black/35 p-5 text-sm text-white/62 md:col-span-2">
+            No live sports events are available from the feed right now. The app will refresh automatically.
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function EventMiniCard({ event }: { event: LiveSportEvent }) {
+  const isLive = event.status.state === "in";
+  return (
+    <article className="rounded-lg border border-white/10 bg-black/35 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/42">{event.league}</p>
+          <h3 className="mt-2 text-lg font-black text-white">{event.shortName}</h3>
+        </div>
+        <span className={`rounded-lg border px-2 py-1 text-[11px] font-black uppercase ${isLive ? "border-[#18e3bd]/30 bg-[#18e3bd]/10 text-[#80ffe2]" : "border-white/10 bg-white/[0.06] text-white/60"}`}>
+          {isLive ? "Live" : event.status.state}
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <button className="rounded-lg border border-[#18e3bd]/35 bg-[#18e3bd]/10 p-3 text-left transition hover:bg-[#18e3bd]/18" type="button" onClick={() => onPrediction(market, "yes")}>
-          <span className="text-xs font-bold text-white/56">YES</span>
-          <span className="mt-1 block text-2xl font-black text-white">{market.odds[0]}%</span>
-        </button>
-        <button className="rounded-lg border border-[#ff5c39]/35 bg-[#ff5c39]/10 p-3 text-left transition hover:bg-[#ff5c39]/18" type="button" onClick={() => onPrediction(market, "no")}>
-          <span className="text-xs font-bold text-white/56">NO</span>
-          <span className="mt-1 block text-2xl font-black text-white">{market.odds[1]}%</span>
-        </button>
-      </div>
-      <div className="mt-4 grid gap-2 text-sm text-white/64 sm:grid-cols-2">
-        <p className="flex items-center gap-2">
-          <Coins size={15} className="text-[#f5a524]" aria-hidden="true" />
-          Volume {market.volume}
-        </p>
-        <p className="flex items-center gap-2">
-          <ShieldCheck size={15} className="text-[#18e3bd]" aria-hidden="true" />
-          {market.settlement}
-        </p>
+      <p className="mt-3 text-sm text-white/58">{event.status.detail}</p>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-black text-white">
+        <span className="rounded-md bg-white/[0.06] p-2">{event.awayTeam.shortName} {event.awayTeam.score ?? ""}</span>
+        <span className="rounded-md bg-white/[0.06] p-2">{event.homeTeam.shortName} {event.homeTeam.score ?? ""}</span>
       </div>
     </article>
   );
 }
 
-function SocialPanel({ onMint }: { onMint: (title: string) => void }) {
+function Headlines({ news, loading, refreshing }: { news: SportsNewsItem[]; loading: boolean; refreshing: boolean }) {
   return (
-    <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="grid gap-3">
-        {socialPosts.map((post) => (
-          <article key={post.handle} className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-black text-white">{post.squad}</p>
-                <p className="text-sm font-semibold text-white/42">{post.handle}</p>
-              </div>
-              <span className="rounded-lg border border-[#f5a524]/30 bg-[#f5a524]/10 px-2 py-1 text-xs font-black text-[#ffd087]">{post.heat}</span>
-            </div>
-            <p className="mt-4 text-sm leading-6 text-white/70">{post.message}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-black text-white transition hover:bg-white/10" type="button">
-                <MessageCircle size={14} aria-hidden="true" />
-                Chant
-              </button>
-              <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-black text-white transition hover:bg-white/10" type="button">
-                <ArrowUpRight size={14} aria-hidden="true" />
-                Share Receipt
-              </button>
-            </div>
-          </article>
-        ))}
+    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Live Headlines</p>
+          <h2 className="mt-1 text-xl font-black text-white">Football first</h2>
+        </div>
+        {refreshing ? <Radio size={16} className="animate-pulse text-[#18e3bd]" aria-hidden="true" /> : null}
       </div>
-      <div className="grid gap-3">
-        {collectibles.map((item) => (
-          <article key={item.title} className="rounded-lg border border-white/10 bg-black/35 p-4">
-            <item.icon size={22} className="text-[#18e3bd]" aria-hidden="true" />
-            <p className="mt-3 text-lg font-black text-white">{item.title}</p>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/40">{item.meta}</p>
-            <p className="mt-3 text-sm leading-6 text-white/64">{item.detail}</p>
-            <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-[#18e3bd]" type="button" onClick={() => onMint(item.title)}>
-              <Ticket size={15} aria-hidden="true" />
-              Prepare Mint
-            </button>
-          </article>
+      <div className="mt-4 grid gap-3">
+        {loading && !news.length ? <SkeletonCards count={3} /> : null}
+        {!loading && news.slice(0, 5).map((item) => (
+          <a key={item.id} className="block rounded-lg border border-white/10 bg-black/35 p-3 transition hover:bg-white/[0.07]" href={item.link} target="_blank" rel="noreferrer">
+            <p className="text-sm font-black leading-5 text-white">{item.title}</p>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/52">{item.description}</p>
+          </a>
         ))}
       </div>
     </section>
   );
 }
 
-function GameFiPanel() {
+function AgentPanel({ featured }: { featured: LiveSportEvent | null }) {
   return (
-    <section className="grid gap-3 lg:grid-cols-3">
-      {gameLoops.map((loop) => (
-        <article key={loop.title} className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-          <loop.icon size={24} className="text-[#f5a524]" aria-hidden="true" />
-          <p className="mt-4 text-xl font-black text-white">{loop.title}</p>
-          <p className="mt-1 text-sm font-black text-[#18e3bd]">{loop.prize}</p>
-          <p className="mt-3 text-sm leading-6 text-white/64">{loop.body}</p>
-          <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-[#18e3bd] via-[#f5a524] to-[#ff5c39]" />
-          </div>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function AgentPanel({
-  agentMode,
-  setAgentMode,
-  agentReply,
-  onRun
-}: {
-  agentMode: "signal" | "risk" | "growth";
-  setAgentMode: (mode: "signal" | "risk" | "growth") => void;
-  agentReply: string;
-  onRun: () => void;
-}) {
-  return (
-    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-      <div className="flex items-start justify-between gap-3">
+    <section id="agent" className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.045] p-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">AI Agent</p>
-          <h2 className="mt-2 text-2xl font-black text-white">Match Oracle cockpit</h2>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">AI Analyst</p>
+          <h2 className="mt-1 text-xl font-black text-white">Squad strategist</h2>
         </div>
-        <Bot className="text-white/50" size={24} aria-hidden="true" />
-      </div>
-      <AgentModeControl agentMode={agentMode} setAgentMode={setAgentMode} />
-      <div className="mt-4 rounded-lg border border-white/10 bg-black/35 p-4">
-        <p className="text-sm leading-7 text-white/76">{agentReply}</p>
-      </div>
-      <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd]" type="button" onClick={onRun}>
-        <Sparkles size={16} aria-hidden="true" />
-        Generate Briefing Proof
-      </button>
-    </section>
-  );
-}
-
-function AgentCard({
-  fixture,
-  agentMode,
-  setAgentMode,
-  agentReply,
-  onRun
-}: {
-  fixture: Fixture;
-  agentMode: "signal" | "risk" | "growth";
-  setAgentMode: (mode: "signal" | "risk" | "growth") => void;
-  agentReply: string;
-  onRun: () => void;
-}) {
-  return (
-    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Agent</p>
-          <h2 className="mt-1 text-xl font-black text-white">Match Oracle</h2>
-        </div>
-        <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-black">
-          <Bot size={20} aria-hidden="true" />
+        <span className="grid h-10 w-10 place-items-center rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 text-[#80ffe2]">
+          <Brain size={20} aria-hidden="true" />
         </span>
       </div>
       <div className="mt-4 rounded-lg border border-white/10 bg-black/35 p-3">
-        <p className="text-sm font-black text-white">{fixture.teams.join(" vs ")}</p>
-        <p className="mt-2 text-sm leading-6 text-white/58">{fixture.agentEdge}</p>
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-white/38">Current read</p>
+        <p className="mt-2 text-sm leading-6 text-white/70">
+          {featured
+            ? `${featured.shortName}: live pressure is active. AI recommends squad-weighted prediction sizing, not solo chasing.`
+            : "Waiting for a verified live fixture before generating tactical prediction suggestions."}
+        </p>
       </div>
-      <AgentModeControl agentMode={agentMode} setAgentMode={setAgentMode} />
-      <p className="mt-4 text-sm leading-6 text-white/66">{agentReply}</p>
-      <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-black text-white transition hover:bg-white/12" type="button" onClick={onRun}>
-        <Activity size={16} aria-hidden="true" />
-        Run Agent
-      </button>
-    </section>
-  );
-}
-
-function AgentModeControl({
-  agentMode,
-  setAgentMode
-}: {
-  agentMode: "signal" | "risk" | "growth";
-  setAgentMode: (mode: "signal" | "risk" | "growth") => void;
-}) {
-  return (
-    <div className="mt-4 grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-black/32 p-1">
-      {(["signal", "risk", "growth"] as const).map((mode) => (
-        <button
-          key={mode}
-          className={`rounded-md px-2 py-2 text-xs font-black capitalize transition ${agentMode === mode ? "bg-white text-black" : "text-white/52 hover:bg-white/10 hover:text-white"}`}
-          type="button"
-          onClick={() => setAgentMode(mode)}
-        >
-          {mode}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ProofRail({ proofs, onOpenProof }: { proofs: ProofEvent[]; onOpenProof: () => void }) {
-  return (
-    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Proof Lane</p>
-          <h2 className="mt-1 text-xl font-black text-white">On-chain ready</h2>
-        </div>
-        <button className="rounded-lg border border-white/10 bg-white/[0.06] p-2 text-white/70 transition hover:text-white" type="button" onClick={onOpenProof} aria-label="Open proof panel">
-          <ArrowUpRight size={18} aria-hidden="true" />
-        </button>
-      </div>
-      <div className="mt-4 grid gap-2">
-        <ProofRow proof={proofs[0]} compact />
-        <div className="rounded-lg border border-white/10 bg-black/32 p-3 text-sm">
-          <p className="font-black text-white">Contract</p>
-          <p className="mt-1 break-all text-white/52">{contractAddress || "NEXT_PUBLIC_XCUP_ARENA_ADDRESS not set"}</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ProofPanel({ proofs }: { proofs: ProofEvent[] }) {
-  return (
-    <section className="grid gap-3">
-      <div className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">X Layer Completion</p>
-            <h2 className="mt-2 text-2xl font-black text-white">Verifiability board</h2>
-          </div>
-          <ShieldCheck size={26} className="text-white/50" aria-hidden="true" />
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <ProofMetric label="Network" value={xLayerTestnet.name} icon={Network} />
-          <ProofMetric label="Chain ID" value={String(xLayerTestnet.id)} icon={Cable} />
-          <ProofMetric label="Contract" value={contractAddress ? "Configured" : "Pending"} icon={BadgeCheck} />
-        </div>
-      </div>
-      {proofs.map((proof) => (
-        <ProofRow key={proof.id} proof={proof} />
-      ))}
-    </section>
-  );
-}
-
-function ProofMetric({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-black/32 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/40">{label}</p>
-        <Icon size={15} className="text-[#18e3bd]" aria-hidden="true" />
-      </div>
-      <p className="mt-2 truncate text-lg font-black text-white">{value}</p>
-    </div>
-  );
-}
-
-function ProofRow({ proof, compact = false }: { proof?: ProofEvent; compact?: boolean }) {
-  if (!proof) {
-    return null;
-  }
-  const displayHash = proof.payloadHash.length > 18 ? `${proof.payloadHash.slice(0, 12)}...${proof.payloadHash.slice(-8)}` : proof.payloadHash;
-
-  return (
-    <article className="rounded-lg border border-white/10 bg-white/[0.045] p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-black text-white">{proof.title}</p>
-          {!compact ? <p className="mt-1 text-sm leading-6 text-white/58">{proof.detail}</p> : null}
-        </div>
-        <span className="shrink-0 rounded-lg border border-[#18e3bd]/30 bg-[#18e3bd]/10 px-2 py-1 text-[11px] font-black uppercase text-[#80ffe2]">{proof.status}</span>
-      </div>
-      <div className="mt-3 flex min-w-0 items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/35 px-3 py-2">
-        <span className="truncate font-mono text-xs text-white/62">{displayHash}</span>
-        <button
-          className="shrink-0 text-white/52 transition hover:text-white"
-          type="button"
-          onClick={() => void navigator.clipboard.writeText(proof.payloadHash)}
-          aria-label="Copy proof hash"
-        >
-          <Copy size={15} aria-hidden="true" />
-        </button>
-      </div>
-      {!compact ? <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-white/38"><Clock3 size={13} aria-hidden="true" />{proof.createdAt}</p> : null}
-    </article>
-  );
-}
-
-function JudgingCard() {
-  return (
-    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Submission Fit</p>
-      <h2 className="mt-1 text-xl font-black text-white">Judge-readable edge</h2>
-      <div className="mt-4 grid gap-3">
-        {judgingMap.map(([label, body]) => (
-          <div key={label} className="rounded-lg border border-white/10 bg-black/32 p-3">
-            <p className="font-black text-white">{label}</p>
-            <p className="mt-2 text-sm leading-6 text-white/58">{body}</p>
-          </div>
+      <div className="mt-3 grid gap-2">
+        {agentInsights.map((insight, index) => (
+          <motion.div
+            key={insight}
+            className="rounded-lg border border-white/10 bg-black/25 p-3 text-sm leading-6 text-white/62"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.08 }}
+          >
+            {insight}
+          </motion.div>
         ))}
       </div>
     </section>
+  );
+}
+
+function SquadSection() {
+  return (
+    <section id="squads" className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.045]">
+      <div className="relative p-4 sm:p-5">
+        <div className="absolute inset-0 opacity-70">
+          <div className="x-squad-grid" />
+        </div>
+        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">SquadX Core</p>
+            <h2 className="mt-2 max-w-2xl text-3xl font-black tracking-normal text-white sm:text-4xl">Football tribal strategy economies onchain.</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-white/62">
+              Create squads, assign roles, pool strategy, climb ELO, fund treasuries, and fight World Cup squad wars on X Layer.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <SquadMetric label="Squads" value="128" icon={Users} />
+            <SquadMetric label="Wars" value="18" icon={Swords} />
+            <SquadMetric label="Treasury" value="9.4K OKB" icon={Landmark} />
+          </div>
+        </div>
+        <div className="relative z-10 mt-5 grid gap-3 lg:grid-cols-3">
+          {squadxSquads.map((squad, index) => (
+            <motion.article
+              key={squad.name}
+              className="group rounded-lg border border-white/10 bg-black/45 p-4 shadow-soft transition hover:-translate-y-1 hover:border-[#18e3bd]/35"
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ delay: index * 0.06 }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/40">{squad.role}</p>
+                  <h3 className="mt-2 text-xl font-black text-white">{squad.name}</h3>
+                </div>
+                <span className="grid h-11 w-11 place-items-center rounded-lg border border-white/10 bg-white/[0.06]" style={{ color: squad.accent }}>
+                  <Crown size={21} aria-hidden="true" />
+                </span>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-white/58">{squad.motto}</p>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <SquadStat label="Level" value={String(squad.level)} />
+                <SquadStat label="ELO" value={String(squad.elo)} />
+                <SquadStat label="Accuracy" value={squad.accuracy} />
+                <SquadStat label="Treasury" value={squad.treasury} />
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3">
+                <span className="text-xs font-black uppercase tracking-[0.14em] text-white/38">Territory</span>
+                <span className="text-sm font-black text-[#18e3bd]">{squad.territory}</span>
+              </div>
+            </motion.article>
+          ))}
+        </div>
+        <div className="relative z-10 mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Squad Wars</p>
+                <h3 className="mt-1 text-xl font-black text-white">Live rivalry board</h3>
+              </div>
+              <Target size={22} className="text-[#f5a524]" aria-hidden="true" />
+            </div>
+            <div className="mt-4 grid gap-2">
+              {squadWars.map((war) => (
+                <div key={war.match} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.045] p-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+                  <div>
+                    <p className="font-black text-white">{war.match}</p>
+                    <p className="mt-1 text-xs font-bold text-white/42">{war.status}</p>
+                  </div>
+                  <p className="text-sm font-black text-[#18e3bd] sm:text-right">{war.prize}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Onchain Loop</p>
+            <div className="mt-4 grid gap-3">
+              {[
+                ["Join", "Wallet signs squad membership"],
+                ["Predict", "Live picks update squad score"],
+                ["War", "Treasury-backed rivalry events"],
+                ["Evolve", "Dynamic badges track reputation"]
+              ].map(([label, body]) => (
+                <div key={label} className="flex gap-3">
+                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#18e3bd] shadow-[0_0_18px_rgba(24,227,189,0.8)]" />
+                  <p className="text-sm leading-6 text-white/62"><b className="text-white">{label}</b> - {body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SquadMetric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Users }) {
+  return (
+    <div className="min-w-[5.75rem] rounded-lg border border-white/10 bg-black/35 p-3">
+      <Icon className="mx-auto text-[#18e3bd]" size={16} aria-hidden="true" />
+      <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">{label}</p>
+      <p className="mt-1 text-sm font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function SquadStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.045] p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/38">{label}</p>
+      <p className="mt-1 text-lg font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+export function XLayerMark({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" role="img" aria-label="X Layer">
+      <rect width="8" height="8" x="4" y="4" fill="currentColor" />
+      <rect width="8" height="8" x="16" y="4" fill="currentColor" opacity="0.72" />
+      <rect width="8" height="8" x="4" y="16" fill="currentColor" opacity="0.72" />
+      <rect width="8" height="8" x="28" y="4" fill="currentColor" opacity="0.42" />
+      <rect width="8" height="8" x="16" y="16" fill="currentColor" />
+      <g aria-hidden="true" fill="#f5a524">
+        <path d="M19 13h2v2h4v2.2c0 2-1.3 3.7-3.1 4.2A3.7 3.7 0 0 1 21 23v2h3v2h-8v-2h3v-2c-.4-.4-.7-.9-.9-1.6A4.4 4.4 0 0 1 15 17.2V15h4v-2Zm-2 4v.2c0 .9.5 1.7 1.2 2.1V17H17Zm4.8 2.3c.7-.4 1.2-1.2 1.2-2.1V17h-1.2v2.3Z" />
+      </g>
+      <rect width="8" height="8" x="28" y="16" fill="currentColor" opacity="0.72" />
+      <rect width="8" height="8" x="4" y="28" fill="currentColor" opacity="0.42" />
+      <rect width="8" height="8" x="16" y="28" fill="currentColor" opacity="0.72" />
+    </svg>
+  );
+}
+
+function SkeletonCards({ count }: { count: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className="h-32 animate-pulse rounded-lg border border-white/10 bg-white/[0.045]" />
+      ))}
+    </>
   );
 }
