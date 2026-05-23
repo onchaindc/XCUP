@@ -1,36 +1,43 @@
 import { defineChain } from "viem";
 
-export const ARC_CHAIN_ID = 5042002;
-export const ARC_RPC_URL = "https://rpc.testnet.arc.network";
-export const ARC_EXPLORER_URL = "https://testnet.arcscan.app";
+export const X_LAYER_MAINNET_CHAIN_ID = 196;
+export const X_LAYER_TESTNET_CHAIN_ID = 1952;
+export const X_LAYER_MAINNET_RPC_URL = "https://rpc.xlayer.tech";
+export const X_LAYER_TESTNET_RPC_URL = "https://testrpc.xlayer.tech/terigon";
+export const X_LAYER_EXPLORER_URL = "https://www.okx.com/web3/explorer/xlayer-test";
 
-export const arcTestnet = defineChain({
-  id: ARC_CHAIN_ID,
-  name: "Arc Testnet",
+export const xLayerTestnet = defineChain({
+  id: X_LAYER_TESTNET_CHAIN_ID,
+  name: "X Layer testnet",
   nativeCurrency: {
     decimals: 18,
-    name: "USDC",
-    symbol: "USDC"
+    name: "OKB",
+    symbol: "OKB"
   },
   rpcUrls: {
     default: {
-      http: [ARC_RPC_URL],
-      webSocket: ["wss://rpc.testnet.arc.network"]
+      http: [X_LAYER_TESTNET_RPC_URL],
+      webSocket: ["wss://xlayerws.okx.com"]
     }
   },
   blockExplorers: {
     default: {
-      name: "ArcScan",
-      url: ARC_EXPLORER_URL
+      name: "OKX Explorer",
+      url: X_LAYER_EXPLORER_URL
     }
   },
   testnet: true
 });
 
+export const arcTestnet = xLayerTestnet;
+export const ARC_CHAIN_ID = X_LAYER_TESTNET_CHAIN_ID;
+export const ARC_RPC_URL = X_LAYER_TESTNET_RPC_URL;
+export const ARC_EXPLORER_URL = X_LAYER_EXPLORER_URL;
+
 export type ArcSendParams = {
   to: string;
   amount: string;
-  token: "USDC" | "EURC" | "ETH" | "WBTC";
+  token: "OKB" | "USDT" | "USDC" | "ETH";
 };
 
 export type ArcSwapParams = {
@@ -41,10 +48,10 @@ export type ArcSwapParams = {
 
 export async function createArcAppKit() {
   return {
-    chain: arcTestnet,
-    rpcUrl: ARC_RPC_URL,
-    mode: "mock-arc-sdk",
-    features: ["wallets", "payments", "swaps", "merchant-invoices"]
+    chain: xLayerTestnet,
+    rpcUrl: X_LAYER_TESTNET_RPC_URL,
+    mode: "mock-x-layer-sdk",
+    features: ["wallets", "predictions", "social", "nfts", "games", "agents"]
   };
 }
 
@@ -54,10 +61,10 @@ export async function getArcSwapQuote({ tokenIn, tokenOut, amountIn }: ArcSwapPa
   return {
     amountOut: amount > 0 && tokenIn === tokenOut ? amount.toString() : "",
     fee: "Unavailable",
-    route: `${tokenIn} -> Arc liquidity -> ${tokenOut}`,
+    route: `${tokenIn} -> X Layer liquidity -> ${tokenOut}`,
     executable: false,
     reason:
-      "ARC ONE is connected to Arc Testnet RPC, but no production swap router contract is configured yet. Execution is disabled until a verified router address is added.",
-    poweredBy: "Arc Testnet RPC"
+      "X Cup is connected to X Layer testnet RPC, but no production swap router contract is configured yet. Execution is disabled until a verified router address is added.",
+    poweredBy: "X Layer testnet RPC"
   };
 }

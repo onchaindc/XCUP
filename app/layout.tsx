@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "@/app/providers";
 
 export const metadata: Metadata = {
-  title: "ARC ONE",
-  description: "A premium crypto finance super app for payments, trading, AI money workflows, and Arc Testnet.",
+  title: "X Cup Edition",
+  description: "A World Cup prediction, SocialFi, NFT, GameFi, and AI agent arena built for X Layer.",
   icons: {
     icon: "/icon.svg"
   }

@@ -15,13 +15,13 @@ const config: Config = {
         glass: "rgba(255, 255, 255, 0.08)",
         line: "rgba(255, 255, 255, 0.12)",
         muted: "#8f9bb3",
-        arcblue: "#2f8cff",
-        arcpurple: "#8b5cf6",
+        arcblue: "#18e3bd",
+        arcpurple: "#ff5c39",
         gain: "#39d98a",
         loss: "#ff5470"
       },
       boxShadow: {
-        glow: "0 24px 90px rgba(47, 140, 255, 0.22)",
+        glow: "0 24px 90px rgba(24, 227, 189, 0.18)",
         soft: "0 18px 55px rgba(0, 0, 0, 0.35)"
       }
     }

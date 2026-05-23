@@ -1,48 +1,36 @@
-# ARC ONE
+# X Cup Edition
 
-ARC ONE is a premium mobile-first crypto finance super app for Arc Testnet. It combines embedded wallet onboarding, live RPC balance sync, payments, merchant invoices, profile settings, and an action-preparing finance copilot.
+X Cup Edition is a World Cup-themed onchain arena for X Layer. It combines prediction markets, SocialFi fan rooms, NFTs, GameFi loops, and AI match agents into one mobile-first product.
 
-## Stack
+## What it does
 
-- Next.js App Router, React, TypeScript
-- Tailwind CSS with shadcn-style local primitives
-- Framer Motion
-- Wagmi + Viem
-- Zustand-ready app structure
-- Arc Testnet chain config and RPC integration
-- Embedded wallet creation with encrypted local key storage
-- Real Arc Testnet RPC balance and native transfer paths
-- Honest swap architecture that disables execution until a verified router is configured
-- Placeholder API routes for usernames and merchant invoices
+- prediction cards for match outcomes and side quests
+- squad/social posts that turn match traffic into shareable onchain activity
+- dynamic NFT mint intents for passes, badges, and relics
+- mini GameFi loops for streaks and matchday engagement
+- AI agent briefings that explain signal, risk, and growth angles
+- proof rail that records payload hashes and demo-ready verifiability
 
-## Arc Testnet
+## X Layer
 
-The app is configured for:
+The app is wired to X Layer testnet primitives:
 
-- Chain ID: `5042002`
-- RPC: `https://rpc.testnet.arc.network`
-- Explorer: `https://testnet.arcscan.app`
-- Native currency: `USDC`
+- Chain ID: `1952`
+- RPC: `https://testrpc.xlayer.tech/terigon`
+- Explorer: `https://www.okx.com/web3/explorer/xlayer-test`
 
-See [lib/arc.ts](./lib/arc.ts) for the chain config and mock Arc SDK integration boundary.
+Set `NEXT_PUBLIC_XCUP_ARENA_ADDRESS` to the deployed contract address to make the proof lane point at a live deployment.
 
-## Product Surface
+## Contract scaffold
 
-- Home dashboard starts empty, syncs real wallet balance, and records activity only from user actions
-- Payments hub validates balance and recipient, signs with embedded or external wallets, and surfaces tx hashes
-- Trade hub previews route constraints and refuses to fake swaps without a configured router
-- AI assistant reads wallet context, balances, invoices, and activity, then opens confirmation-first flows
-- Profile settings open functional panels for username, security, wallets, notifications, theme, referrals, and support
-- Merchant invoice builder generates local invoice records and payment links
+[`contracts/XCupArena.sol`](./contracts/XCupArena.sol) is the minimal onchain scaffold for:
 
-## API Routes
+- recording prediction tickets
+- tracking squad joins
+- recording mint intents
+- recording agent briefings
 
-- `GET /api/usernames?username=alex`
-- `POST /api/usernames`
-- `GET /api/merchant/invoices`
-- `POST /api/merchant/invoices`
-
-The current backend is persistence-ready. `lib/db.ts` includes Supabase/PostgreSQL environment detection and starter schemas for usernames, invoices, activities, and user preferences.
+It is intentionally small so it can be deployed during the hackathon and referenced from the UI.
 
 ## Run
 
@@ -51,8 +39,6 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
-
 ## Validate
 
 ```bash
@@ -60,6 +46,8 @@ npm run typecheck
 npm run build
 ```
 
-## Environment
+## Notes
 
-Copy `.env.example` to `.env.local` and fill in production values when available.
+- The first screen is a custom loader inspired by a football strike into goalpost geometry.
+- The UI is intentionally dark, dense, and minimal to stay close to the OKX / X Layer visual language.
+- The app currently prepares verifiable payloads locally and is ready to point to a deployed X Layer contract.

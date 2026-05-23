@@ -1,6 +1,6 @@
 "use client";
 
-import { ARC_CHAIN_ID, ARC_EXPLORER_URL, ARC_RPC_URL, arcTestnet } from "@/lib/arc";
+import { X_LAYER_EXPLORER_URL, X_LAYER_TESTNET_CHAIN_ID, X_LAYER_TESTNET_RPC_URL, xLayerTestnet } from "@/lib/arc";
 
 type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
@@ -28,11 +28,11 @@ export async function addArcNetwork() {
     method: "wallet_addEthereumChain",
     params: [
       {
-        chainId: `0x${ARC_CHAIN_ID.toString(16)}`,
-        chainName: arcTestnet.name,
-        rpcUrls: [ARC_RPC_URL],
-        nativeCurrency: arcTestnet.nativeCurrency,
-        blockExplorerUrls: [ARC_EXPLORER_URL]
+        chainId: `0x${X_LAYER_TESTNET_CHAIN_ID.toString(16)}`,
+        chainName: xLayerTestnet.name,
+        rpcUrls: [X_LAYER_TESTNET_RPC_URL],
+        nativeCurrency: xLayerTestnet.nativeCurrency,
+        blockExplorerUrls: [X_LAYER_EXPLORER_URL]
       }
     ]
   });
@@ -45,6 +45,6 @@ export async function switchToArcNetwork() {
   }
   await provider.request({
     method: "wallet_switchEthereumChain",
-    params: [{ chainId: `0x${ARC_CHAIN_ID.toString(16)}` }]
+    params: [{ chainId: `0x${X_LAYER_TESTNET_CHAIN_ID.toString(16)}` }]
   });
 }

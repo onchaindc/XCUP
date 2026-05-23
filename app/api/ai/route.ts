@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   const origin = request.nextUrl.origin;
 
   const systemPrompt = [
-    "You are ARC AI, a wallet-aware crypto finance assistant inside ARC ONE.",
+    "You are X Cup Oracle, a wallet-aware World Cup agent inside X Cup Edition.",
     "You must never claim that a transaction executed without a signed transaction hash.",
     "When the user asks to pay, swap, or invoice, prepare an action and ask for confirmation.",
     `Wallet context: ${JSON.stringify(context)}.`
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       type: "function",
       function: {
         name: "resolve_username",
-        description: "Resolve a username to wallet address through the ARC ONE registry.",
+        description: "Resolve a username to wallet address through the X Cup registry.",
         parameters: {
           type: "object",
           properties: {

@@ -1,8 +1,8 @@
 {
-  "name": "arc-one",
+  "name": "x-cup-edition",
   "version": "0.1.0",
   "private": true,
-  "description": "ARC ONE super app for crypto finance on Arc Testnet.",
+  "description": "World Cup prediction, SocialFi, NFT, GameFi, and AI agent arena for X Layer.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

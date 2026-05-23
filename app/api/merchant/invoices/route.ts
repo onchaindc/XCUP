@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "amount is required" }, { status: 400 });
   }
 
-  const invoiceId = `arc_${crypto.randomUUID().slice(0, 8)}`;
+  const invoiceId = `xcup_${crypto.randomUUID().slice(0, 8)}`;
 
   return NextResponse.json({
     invoiceId,
@@ -19,10 +19,10 @@ export async function POST(request: NextRequest) {
     amount: body.amount,
     payToken: "ETH",
     settlementToken: body.settlementToken ?? "USDC",
-    checkoutUrl: `https://arc.one/pay/${invoiceId}`,
-    qrPayload: `arc-one://pay/${invoiceId}`,
+    checkoutUrl: `https://xcup.example/pay/${invoiceId}`,
+    qrPayload: `xcup://pay/${invoiceId}`,
     status: "created",
-    network: "Arc Testnet"
+    network: "X Layer testnet"
   });
 }
 

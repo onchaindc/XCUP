@@ -1,5 +1,5 @@
-import { ArcOneApp } from "@/components/ArcOneApp";
+import { XCupApp } from "@/components/XCupApp";
 
 export default function Home() {
-  return <ArcOneApp />;
+  return <XCupApp />;
 }
