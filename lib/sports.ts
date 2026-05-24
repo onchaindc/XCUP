@@ -33,9 +33,12 @@ export type SportsNewsItem = {
   id: string;
   title: string;
   description: string;
+  summary?: string;
   link: string;
   image?: string;
   source: string;
+  byline?: string;
+  category?: string;
   published?: string;
 };
 
@@ -59,4 +62,18 @@ export function formatLiveEventMatchup(event: Pick<LiveSportEvent, "awayTeam" | 
   }
 
   return event.shortName.replace(/\s+@\s+|\s+at\s+/gi, " VS ");
+}
+
+export function isLiveEvent(event: Pick<LiveSportEvent, "status">) {
+  return event.status.state === "in";
+}
+
+export function eventStatusLabel(event: Pick<LiveSportEvent, "status">) {
+  if (event.status.state === "in") {
+    return "Live";
+  }
+  if (event.status.state === "pre") {
+    return "Scheduled";
+  }
+  return event.status.state || "Scheduled";
 }

@@ -8,6 +8,7 @@ import { useAccount, useBalance, useConnect, useDisconnect, useWriteContract } f
 import { formatLiveEventMatchup, type LiveSportEvent } from "@/lib/sports";
 import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
+import { pickWalletConnector } from "@/lib/wallet";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
 type AgentMode = "signal" | "risk" | "settlement";
@@ -102,7 +103,7 @@ export function AgentPage() {
   const selectedEvent = events.find((event) => event.id === selectedEventId) ?? events[0] ?? null;
 
   async function connectWallet() {
-    const connector = connectors[0];
+    const connector = pickWalletConnector(connectors);
     if (!connector) {
       setStatus("No wallet connector detected.");
       return;

@@ -10,8 +10,10 @@ import {
   Globe2,
   Newspaper,
   Radio,
+  Settings2,
   ShieldCheck,
   Trophy,
+  UserRound,
   Users,
   Wallet
 } from "lucide-react";
@@ -20,10 +22,13 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
-import { formatLiveEventMatchup, type LiveSportEvent, type SportsNewsItem } from "@/lib/sports";
+import { eventStatusLabel, formatLiveEventMatchup, type LiveSportEvent, type SportsNewsItem } from "@/lib/sports";
 import { xLayerTestnet } from "@/lib/arc";
+import type { Preferences, UserProfile } from "@/lib/app-store";
+import { useAppStore } from "@/lib/app-store";
 import { useNetworkStatus } from "@/lib/use-network-status";
 import { errorMessage, shortAddress } from "@/lib/utils";
+import { pickWalletConnector } from "@/lib/wallet";
 
 const topNav = [
   { label: "Matches", href: "/markets", icon: Radio },
@@ -48,6 +53,10 @@ export function XCupApp() {
   const [feedError, setFeedError] = useState("");
   const [walletError, setWalletError] = useState("");
   const feedHydratedRef = useRef(false);
+  const profile = useAppStore((state) => state.profile);
+  const preferences = useAppStore((state) => state.preferences);
+  const updateProfile = useAppStore((state) => state.updateProfile);
+  const updatePreferences = useAppStore((state) => state.updatePreferences);
   const { address, isConnected } = useAccount();
   const { connectors, connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
@@ -58,7 +67,7 @@ export function XCupApp() {
     query: { enabled: Boolean(address) }
   });
   const liveEvents = events.filter((event) => event.status.state === "in");
-  const featured = liveEvents[0] ?? null;
+  const featured = liveEvents[0] ?? events[0] ?? null;
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
 
   useEffect(() => {
@@ -108,8 +117,8 @@ export function XCupApp() {
 
   const stats = useMemo(
     () => [
-      { label: "Live Events", value: String(liveEvents.length), icon: Radio },
-      { label: "Tracked Games", value: String(events.length), icon: Globe2 },
+      { label: "Live matches", value: String(liveEvents.length), icon: Radio },
+      { label: "Matches", value: String(events.length), icon: Globe2 },
       { label: "Headlines", value: String(news.length), icon: Newspaper },
       { label: "X Layer", value: isConnected && network.onArc ? "Ready" : "Testnet", icon: ShieldCheck }
     ],
@@ -117,7 +126,7 @@ export function XCupApp() {
   );
 
   async function connectWallet() {
-    const connector = connectors[0];
+    const connector = pickWalletConnector(connectors);
     if (!connector) {
       setWalletError("No wallet connector detected.");
       return;
@@ -153,9 +162,15 @@ export function XCupApp() {
         />
         <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_25rem]">
           <div className="grid gap-4">
-            <LiveBoard events={liveEvents} loading={loadingFeeds} refreshing={refreshingFeeds} />
+            <LiveBoard events={events} loading={loadingFeeds} refreshing={refreshingFeeds} />
           </div>
           <aside className="grid content-start gap-4">
+            <ProfileSettingsPanel
+              profile={profile}
+              preferences={preferences}
+              onUpdateProfile={updateProfile}
+              onUpdatePreferences={updatePreferences}
+            />
             <Headlines news={news} loading={loadingFeeds} refreshing={refreshingFeeds} />
             <AgentPanel featured={featured} />
           </aside>
@@ -182,7 +197,7 @@ export function TopHeader({
 }) {
   return (
     <header className="sticky top-0 z-50 mb-4 border-b border-white/10 bg-[#030409]/90 py-3 backdrop-blur-xl">
-      <div className="flex min-w-0 items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
         <Link className="flex min-w-0 items-center gap-3" href="/">
           <XLayerMark className="h-9 w-9 shrink-0" />
           <span className="min-w-0">
@@ -190,7 +205,7 @@ export function TopHeader({
             <span className="block truncate text-[11px] font-bold uppercase tracking-[0.22em] text-white/42">World Cup on X Layer</span>
           </span>
         </Link>
-        <nav className="hidden items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 lg:flex">
+        <nav className="hidden items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 xl:flex">
           {topNav.map((item) => (
             <Link key={item.label} className="flex min-h-10 items-center gap-2 rounded-md px-3 text-xs font-black text-white/62 transition hover:bg-white/10 hover:text-white" href={item.href}>
               <item.icon size={15} aria-hidden="true" />
@@ -198,22 +213,30 @@ export function TopHeader({
             </Link>
           ))}
         </nav>
-        {isConnected ? (
-          <button className="flex max-w-[11.5rem] items-center gap-2 rounded-lg border border-white/12 bg-white/[0.07] px-3 py-2 text-left text-xs font-bold text-white transition hover:bg-white/12" type="button" onClick={onDisconnect}>
-            <Wallet size={16} aria-hidden="true" />
-            <span className="min-w-0">
-              <span className="block truncate">{shortAddress(address)}</span>
-              <span className="block truncate text-[11px] text-white/50">{balance}</span>
-            </span>
-          </button>
-        ) : (
-          <button className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-[#18e3bd]" type="button" onClick={onConnect} disabled={isPending}>
-            <Wallet size={16} aria-hidden="true" />
-            {isPending ? "Connecting" : "Connect"}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="#profile" aria-label="Profile">
+            <UserRound size={16} aria-hidden="true" />
+          </Link>
+          <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="#settings" aria-label="Settings">
+            <Settings2 size={16} aria-hidden="true" />
+          </Link>
+          {isConnected ? (
+            <button className="flex max-w-[11.5rem] items-center gap-2 rounded-lg border border-white/12 bg-white/[0.07] px-3 py-2 text-left text-xs font-bold text-white transition hover:bg-white/12" type="button" onClick={onDisconnect}>
+              <Wallet size={16} aria-hidden="true" />
+              <span className="min-w-0">
+                <span className="block truncate">{shortAddress(address)}</span>
+                <span className="block truncate text-[11px] text-white/50">{balance}</span>
+              </span>
+            </button>
+          ) : (
+            <button className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-black transition hover:bg-[#18e3bd]" type="button" onClick={onConnect} disabled={isPending}>
+              <Wallet size={16} aria-hidden="true" />
+              {isPending ? "Connecting" : "Connect"}
+            </button>
+          )}
+        </div>
       </div>
-      <nav className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 sm:grid-cols-6 lg:hidden">
+      <nav className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 sm:grid-cols-6 xl:hidden">
         {topNav.map((item) => (
           <Link key={item.label} className="flex min-h-10 items-center justify-center gap-1 rounded-md px-1 text-[11px] font-black text-white/62 transition hover:bg-white/10 hover:text-white" href={item.href}>
             <item.icon size={14} aria-hidden="true" />
@@ -296,9 +319,9 @@ function Hero({
         <div className="x-reference-ball x-motion-ball" />
       </div>
       <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="flex min-h-[25rem] flex-col justify-between">
+        <div className="flex min-h-[18rem] flex-col justify-between sm:min-h-[22rem]">
           <div>
-            <p className="text-2xl font-light tracking-normal text-white sm:text-3xl">X Cup Arena</p>
+            <p className="text-lg font-light tracking-normal text-white sm:text-2xl">X Cup Arena</p>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">
               A World Cup arena for live predictions, matchday GameFi, AI agents, squads, and verifiable X Layer actions.
             </p>
@@ -311,7 +334,7 @@ function Hero({
                 </span>
               ))}
             </div>
-            <h1 className="max-w-3xl text-4xl font-black leading-[1.02] tracking-normal text-white sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl text-3xl font-black leading-[1.02] tracking-normal text-white sm:text-4xl lg:text-5xl">
               Trade the match. Rally the squad. Prove the win.
             </h1>
             <div className="mt-5 flex flex-wrap gap-2">
@@ -331,9 +354,9 @@ function Hero({
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">
               {refreshing ? "Refreshing live feed" : liveCount ? "Live now" : loading ? "Syncing feeds" : "Next top event"}
             </p>
-            <p className="mt-3 text-xl font-black text-white">{featured ? formatLiveEventMatchup(featured) : feedError || leadNews?.title || "No live event available right now"}</p>
+            <p className="mt-3 text-xl font-black text-white">{featured ? formatLiveEventMatchup(featured) : feedError || leadNews?.title || "No live match available right now"}</p>
             <p className="mt-2 text-sm leading-6 text-white/58">
-              {featured ? `${featured.league} - ${featured.status.detail}` : leadNews ? "Latest football headline while live markets wait for the next real event." : "Markets only open when a real sports feed returns live events."}
+              {featured ? `${featured.league} - ${featured.status.detail}` : leadNews ? "Latest football headline while matches wait for the next live or scheduled event." : "Markets refresh from the real sports feed."}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -364,7 +387,7 @@ function LiveBoard({ events, loading, refreshing }: { events: LiveSportEvent[]; 
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Top Board</p>
-          <h2 className="mt-1 text-2xl font-black text-white">Priority games</h2>
+          <h2 className="mt-1 text-2xl font-black text-white">Matches</h2>
         </div>
         <div className="flex items-center gap-2">
           {refreshing ? <span className="rounded-lg border border-[#18e3bd]/20 bg-[#18e3bd]/10 px-2 py-1 text-[11px] font-black uppercase text-[#80ffe2]">Syncing</span> : null}
@@ -379,7 +402,7 @@ function LiveBoard({ events, loading, refreshing }: { events: LiveSportEvent[]; 
         {!loading && events.length ? events.slice(0, 6).map((event) => <EventMiniCard key={event.id} event={event} />) : null}
         {!loading && !events.length ? (
           <div className="rounded-lg border border-white/10 bg-black/35 p-5 text-sm text-white/62 md:col-span-2">
-            No live sports events are available from the feed right now. The app will refresh automatically.
+            No live matches are available right now. Scheduled fixtures will appear here once the feed returns them.
           </div>
         ) : null}
       </div>
@@ -397,10 +420,11 @@ function EventMiniCard({ event }: { event: LiveSportEvent }) {
           <h3 className="mt-2 text-lg font-black text-white">{formatLiveEventMatchup(event)}</h3>
         </div>
         <span className={`rounded-lg border px-2 py-1 text-[11px] font-black uppercase ${isLive ? "border-[#18e3bd]/30 bg-[#18e3bd]/10 text-[#80ffe2]" : "border-white/10 bg-white/[0.06] text-white/60"}`}>
-          {isLive ? "Live" : event.status.state}
+          {eventStatusLabel(event)}
         </span>
       </div>
       <p className="mt-3 text-sm text-white/58">{event.status.detail}</p>
+      {!isLive ? <p className="mt-1 text-xs font-bold text-white/42">{new Date(event.date).toLocaleString()}</p> : null}
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-black text-white">
         <span className="rounded-md bg-white/[0.06] p-2">{event.awayTeam.shortName} {event.awayTeam.score ?? ""}</span>
         <span className="rounded-md bg-white/[0.06] p-2">{event.homeTeam.shortName} {event.homeTeam.score ?? ""}</span>
@@ -422,10 +446,80 @@ function Headlines({ news, loading, refreshing }: { news: SportsNewsItem[]; load
       <div className="mt-4 grid gap-3">
         {loading && !news.length ? <SkeletonCards count={3} /> : null}
         {!loading && news.slice(0, 5).map((item) => (
-          <a key={item.id} className="block rounded-lg border border-white/10 bg-black/35 p-3 transition hover:bg-white/[0.07]" href={item.link} target="_blank" rel="noreferrer">
+          <Link key={item.id} className="block rounded-lg border border-white/10 bg-black/35 p-3 transition hover:bg-white/[0.07]" href={`/news/${encodeURIComponent(item.id)}`}>
             <p className="text-sm font-black leading-5 text-white">{item.title}</p>
             <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/52">{item.description}</p>
-          </a>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProfileSettingsPanel({
+  profile,
+  preferences,
+  onUpdateProfile,
+  onUpdatePreferences
+}: {
+  profile: UserProfile;
+  preferences: Preferences;
+  onUpdateProfile: (profile: Partial<UserProfile>) => void;
+  onUpdatePreferences: (preferences: Partial<Preferences>) => void;
+}) {
+  const toggles = [
+    {
+      label: "Push",
+      enabled: preferences.notifications.push,
+      toggle: () => onUpdatePreferences({ notifications: { ...preferences.notifications, push: !preferences.notifications.push } })
+    },
+    {
+      label: "AI",
+      enabled: preferences.notifications.ai,
+      toggle: () => onUpdatePreferences({ notifications: { ...preferences.notifications, ai: !preferences.notifications.ai } })
+    },
+    {
+      label: "Tx",
+      enabled: preferences.notifications.transactions,
+      toggle: () => onUpdatePreferences({ notifications: { ...preferences.notifications, transactions: !preferences.notifications.transactions } })
+    }
+  ];
+
+  return (
+    <section className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-4">
+      <div id="profile" className="grid gap-3 rounded-lg border border-white/10 bg-black/35 p-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Profile</p>
+          <UserRound size={16} className="text-[#18e3bd]" aria-hidden="true" />
+        </div>
+        <input
+          className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#18e3bd]/60"
+          placeholder="Display name"
+          value={profile.displayName}
+          onChange={(event) => onUpdateProfile({ displayName: event.target.value })}
+        />
+        <input
+          className="rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#18e3bd]/60"
+          placeholder="@username"
+          value={profile.username}
+          onChange={(event) => onUpdateProfile({ username: event.target.value })}
+        />
+      </div>
+      <div id="settings" className="grid gap-2 rounded-lg border border-white/10 bg-black/35 p-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Settings</p>
+          <Settings2 size={16} className="text-[#18e3bd]" aria-hidden="true" />
+        </div>
+        {toggles.map(({ label, enabled, toggle }) => (
+          <button
+            key={label}
+            className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-[0.12em] ${enabled ? "border-[#18e3bd]/30 bg-[#18e3bd]/10 text-white" : "border-white/10 bg-white/[0.04] text-white/52"}`}
+            type="button"
+            onClick={toggle}
+          >
+            <span>{label}</span>
+            <span>{enabled ? "On" : "Off"}</span>
+          </button>
         ))}
       </div>
     </section>

@@ -47,4 +47,16 @@ create table if not exists user_preferences (
   preferences jsonb not null,
   updated_at timestamptz default now()
 );
+
+create table if not exists squads (
+  id text primary key,
+  name text not null unique,
+  motto text not null,
+  role text not null,
+  territory text not null,
+  accent text not null,
+  members integer not null default 0,
+  creator text,
+  created_at timestamptz default now()
+);
 `;

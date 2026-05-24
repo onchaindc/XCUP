@@ -8,6 +8,7 @@ import { useAccount, useBalance, useConnect, useDisconnect, useWriteContract } f
 import { formatLiveEventMatchup, type LiveSportEvent } from "@/lib/sports";
 import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
+import { pickWalletConnector } from "@/lib/wallet";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
 type Slip = {
@@ -138,7 +139,7 @@ export function MarketsPage() {
   const liveCount = events.filter((event) => event.status.state === "in").length;
 
   async function connectWallet() {
-    const connector = connectors[0];
+    const connector = pickWalletConnector(connectors);
     if (!connector) {
       setError("No wallet connector detected.");
       return;

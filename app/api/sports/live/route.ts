@@ -13,6 +13,7 @@ const feeds = [
   { sport: "Football", league: "Serie A", slug: "soccer/ita.1", priority: 110 },
   { sport: "Football", league: "Bundesliga", slug: "soccer/ger.1", priority: 108 },
   { sport: "Football", league: "Ligue 1", slug: "soccer/fra.1", priority: 104 },
+  { sport: "Football", league: "Eredivisie", slug: "soccer/ned.1", priority: 103 },
   { sport: "Football", league: "Europa League", slug: "soccer/uefa.europa", priority: 100 },
   { sport: "Football", league: "MLS", slug: "soccer/usa.1", priority: 94 },
   { sport: "Football", league: "Liga MX", slug: "soccer/mex.1", priority: 92 },
@@ -30,7 +31,7 @@ const feeds = [
   { sport: "MMA", league: "UFC", slug: "mma/ufc", priority: 48 }
 ];
 
-const priorityClubs = ["real madrid", "barcelona", "arsenal", "manchester city", "madrid", "barca", "city"];
+const priorityClubs = ["real madrid", "barcelona", "arsenal", "manchester city", "madrid", "barca", "city", "ajax"];
 const FEED_TIMEOUT_MS = 3500;
 
 type EspnTeam = {
@@ -103,13 +104,14 @@ function normalizeEvent(event: EspnEvent, feed: (typeof feeds)[number]): LiveSpo
   const awayTeam = teamFrom(away);
   const state = event.status?.type?.state ?? "unknown";
   const liveBoost = state === "in" ? 20 : 0;
+  const scheduledBoost = state === "pre" ? 6 : 0;
   const text = `${event.name ?? ""} ${event.shortName ?? ""} ${homeTeam.name} ${awayTeam.name}`.toLowerCase();
   const clubBoost = priorityClubs.reduce((boost, club) => boost + (text.includes(club) ? 10 : 0), 0);
   return {
     id: `${feed.slug}:${event.id}`,
     sport: feed.sport,
     league: feed.league,
-    priority: feed.priority + liveBoost + clubBoost,
+    priority: feed.priority + liveBoost + scheduledBoost + clubBoost,
     name: normalizeMatchupText(event.name ?? `${awayTeam.name} VS ${homeTeam.name}`),
     shortName: normalizeMatchupText(event.shortName ?? matchupName(awayTeam, homeTeam)),
     date: event.date ?? new Date().toISOString(),
@@ -161,9 +163,17 @@ async function fetchFeed(feed: (typeof feeds)[number]) {
 export async function GET() {
   const settled = await Promise.allSettled(feeds.map(fetchFeed));
   const seen = new Set<string>();
+  const now = Date.now();
+  const soon = now + 72 * 60 * 60 * 1000;
   const events = settled
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
-    .filter((event) => event.status.state === "in")
+    .filter((event) => {
+      if (event.status.state === "in") {
+        return true;
+      }
+      const eventTime = new Date(event.date).getTime();
+      return event.status.state === "pre" && eventTime >= now - 30 * 60 * 1000 && eventTime <= soon;
+    })
     .filter((event) => {
       if (seen.has(event.id)) {
         return false;
@@ -171,7 +181,13 @@ export async function GET() {
       seen.add(event.id);
       return true;
     })
-    .sort((a, b) => b.priority - a.priority || new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => {
+      const liveSort = Number(b.status.state === "in") - Number(a.status.state === "in");
+      if (liveSort) {
+        return liveSort;
+      }
+      return b.priority - a.priority || new Date(a.date).getTime() - new Date(b.date).getTime();
+    })
     .slice(0, 120);
 
   const body: LiveSportsResponse = {

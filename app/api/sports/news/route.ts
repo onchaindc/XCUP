@@ -13,6 +13,8 @@ type EspnNews = {
     links?: { web?: { href?: string } };
     images?: Array<{ url?: string }>;
     source?: string;
+    byline?: string;
+    type?: string;
   }>;
 };
 
@@ -21,6 +23,7 @@ const newsFeeds = [
   "https://site.api.espn.com/apis/site/v2/sports/soccer/news",
   "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/news",
   "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/news",
+  "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.1/news",
   "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/news",
   "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/news",
   "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news",
@@ -72,9 +75,12 @@ async function fetchNews(url: string) {
     id: String(article.id ?? `${url}-${index}`),
     title: article.headline ?? "Sports headline",
     description: article.description ?? "",
+    summary: article.description ?? "",
     link: article.links?.web?.href ?? "https://www.espn.com/soccer/",
     image: article.images?.[0]?.url,
     source: article.source ?? "ESPN",
+    byline: article.byline,
+    category: article.type,
     published: article.published
   }));
 }

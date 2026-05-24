@@ -8,6 +8,7 @@ import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
 import type { LiveSportEvent } from "@/lib/sports";
 import { xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
+import { pickWalletConnector } from "@/lib/wallet";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
 type PlayerPick = {
@@ -71,7 +72,7 @@ export function GameFiPage() {
   const lineupScore = selectedPlayers.reduce((score, player, index) => score + player.name.length * 3 + (index + 1) * 4, 0);
 
   async function connectWallet() {
-    const connector = connectors[0];
+    const connector = pickWalletConnector(connectors);
     if (!connector) {
       setWalletError("No wallet connector detected.");
       return;
