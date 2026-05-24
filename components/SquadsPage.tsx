@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight, Crown, Landmark, Plus, Shield, Sparkles, Swords, Users } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatUnits, keccak256, toBytes } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect, useWriteContract } from "wagmi";
@@ -49,6 +50,7 @@ export function SquadsPage() {
     accent: squadAccents[0]
   });
   const [activeSquadId, setActiveSquadId] = useState("");
+  const [joinedSquadIds, setJoinedSquadIds] = useState<Set<string>>(() => new Set());
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({
     address,
@@ -168,6 +170,14 @@ export function SquadsPage() {
 
   async function joinSquad(squad: SquadRecord) {
     setActiveSquadId(squad.id);
+    if (joinedSquadIds.has(squad.id)) {
+      setBanner(`Already joined ${squad.name}.`);
+      return;
+    }
+    if (!address) {
+      setBanner("Connect wallet to join a squad.");
+      return;
+    }
     let txHash = "";
 
     try {
@@ -193,6 +203,7 @@ export function SquadsPage() {
         throw new Error(data.error || "Unable to join squad.");
       }
       setSquads((current) => current.map((item) => (item.id === squad.id ? data.squad! : item)));
+      setJoinedSquadIds((current) => new Set(current).add(squad.id));
       setBanner(txHash ? `Joined ${squad.name}. Tx ${txHash.slice(0, 10)}...` : `Joined ${squad.name}.`);
     } catch (error) {
       setBanner(error instanceof Error ? error.message : "Unable to join squad.");
@@ -287,10 +298,16 @@ export function SquadsPage() {
                       <MiniStat label="Members" value={String(squad.members)} />
                       <MiniStat label="Territory" value={squad.territory} />
                     </div>
-                    <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:cursor-not-allowed disabled:opacity-60" type="button" disabled={isWriting} onClick={() => void joinSquad(squad)}>
-                      Join squad
-                      <ArrowRight size={16} aria-hidden="true" />
-                    </button>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:cursor-not-allowed disabled:opacity-60" type="button" disabled={isWriting || joinedSquadIds.has(squad.id)} onClick={() => void joinSquad(squad)}>
+                        {joinedSquadIds.has(squad.id) ? "Joined" : "Join"}
+                        <ArrowRight size={16} aria-hidden="true" />
+                      </button>
+                      <Link className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-black text-white transition hover:bg-white/12" href={`/squads/${encodeURIComponent(squad.id)}`}>
+                        Explore
+                        <Sparkles size={16} aria-hidden="true" />
+                      </Link>
+                    </div>
                   </motion.article>
                 ))}
               </div>
@@ -357,13 +374,14 @@ export function SquadsPage() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Squad wars</p>
-                  <h2 className="mt-1 text-xl font-black text-white">Live rivalry board</h2>
+                  <h2 className="mt-1 text-xl font-black text-white">Active competitions</h2>
                 </div>
                 <Swords size={18} className="text-[#f5a524]" aria-hidden="true" />
               </div>
-              <div className="mt-4 rounded-lg border border-white/10 bg-black/35 p-3 text-sm text-white/60">
-                No mock wars are shown until real squads exist.
-              </div>
+              <Link className="mt-4 flex items-center justify-between rounded-lg border border-white/10 bg-black/35 p-3 text-sm font-black text-white transition hover:bg-white/[0.07]" href={activeSquad ? `/squads/${encodeURIComponent(activeSquad.id)}` : "#discover-squads"}>
+                <span>{activeSquad ? "Open squad arena" : "Create or join a squad first"}</span>
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
             </section>
 
             <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">

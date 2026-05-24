@@ -248,7 +248,7 @@ export function TopHeader({
   );
 }
 
-export function KickoffLoader({ onSkip }: { onSkip: () => void }) {
+export function KickoffLoader({ onSkip: _onSkip }: { onSkip: () => void }) {
   return (
     <motion.div
       className="fixed inset-0 z-[80] grid place-items-center bg-black"
@@ -257,13 +257,9 @@ export function KickoffLoader({ onSkip }: { onSkip: () => void }) {
       transition={{ duration: 0.55 }}
       aria-label="Loading X Cup arena"
     >
-      <button className="absolute right-4 top-4 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-white/44 transition hover:text-white" type="button" onClick={onSkip}>
-        Skip
-      </button>
       <div className="x-loader-scene" aria-hidden="true">
         <div className="x-loader-title">
           <span>X Cup Arena</span>
-          <strong>Loading live matchday</strong>
         </div>
         <div className="x-loader-goal">
           <span />

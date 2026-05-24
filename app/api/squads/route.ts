@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { SquadRecord, SquadRole, SquadsResponse } from "@/lib/squads";
+import {
+  getFallbackMembers,
+  getFallbackSquads,
+  normalizeAddress,
+  toMemberLabel,
+  type SquadRecord,
+  type SquadRole,
+  type SquadsResponse
+} from "@/lib/squads";
 
 export const dynamic = "force-dynamic";
 
@@ -8,13 +16,8 @@ const accents = new Set(["#18e3bd", "#42a5ff", "#f5a524", "#ff5c39"]);
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-declare global {
-  var xCupSquads: SquadRecord[] | undefined;
-}
-
 function store() {
-  globalThis.xCupSquads ??= [];
-  return globalThis.xCupSquads;
+  return getFallbackSquads();
 }
 
 function slug(value: string) {
@@ -101,6 +104,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Add a squad name first." }, { status: 400 });
     }
 
+    const addressKey = normalizeAddress(payload.address);
     const existing = squads.find((squad) => squad.name.toLowerCase() === name.toLowerCase());
     if (existing) {
       return NextResponse.json({ error: "A squad with this name already exists." }, { status: 409 });
@@ -114,9 +118,9 @@ export async function POST(request: NextRequest) {
       role,
       territory: payload.territory?.trim() || "Global",
       accent: payload.accent && accents.has(payload.accent) ? payload.accent : "#18e3bd",
-      members: payload.address ? 1 : 0,
+      members: addressKey ? 1 : 0,
       createdAt: new Date().toISOString(),
-      creator: payload.address
+      creator: addressKey || undefined
     };
 
     const response = await supabaseRequest("squads", {
@@ -142,7 +146,22 @@ export async function POST(request: NextRequest) {
     }
 
     squads.unshift(squad);
+    if (addressKey) {
+      const members = getFallbackMembers();
+      const squadMembers = members.get(squad.id) ?? new Map();
+      squadMembers.set(addressKey, {
+        address: addressKey,
+        label: toMemberLabel(addressKey),
+        joinedAt: squad.createdAt,
+        online: true
+      });
+      members.set(squad.id, squadMembers);
+    }
     return NextResponse.json({ squad });
+  }
+  const addressKey = normalizeAddress(payload.address);
+  if (!addressKey) {
+    return NextResponse.json({ error: "Wallet address is required to join a squad." }, { status: 400 });
   }
 
   const remote = await supabaseRequest(`squads?id=eq.${encodeURIComponent(payload.id ?? "")}&select=id,name,motto,role,territory,accent,members,creator,created_at&limit=1`);
@@ -151,7 +170,7 @@ export async function POST(request: NextRequest) {
     if (!current) {
       return NextResponse.json({ error: "Squad not found." }, { status: 404 });
     }
-    const updatedMembers = current.members + 1;
+    const updatedMembers = current.creator?.toLowerCase() === addressKey ? current.members : current.members + 1;
     const update = await supabaseRequest(`squads?id=eq.${encodeURIComponent(current.id)}`, {
       method: "PATCH",
       headers: { prefer: "return=representation" },
@@ -174,6 +193,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Squad not found." }, { status: 404 });
   }
 
-  squad.members += 1;
+  const members = getFallbackMembers();
+  const squadMembers = members.get(squad.id) ?? new Map();
+  if (squadMembers.has(addressKey)) {
+    return NextResponse.json({ squad });
+  }
+  squadMembers.set(addressKey, {
+    address: addressKey,
+    label: toMemberLabel(addressKey),
+    joinedAt: new Date().toISOString(),
+    online: true
+  });
+  members.set(squad.id, squadMembers);
+  squad.members = squadMembers.size;
   return NextResponse.json({ squad });
 }
