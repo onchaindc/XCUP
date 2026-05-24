@@ -39,21 +39,51 @@ export type ConnectedWallet = {
 export type UserProfile = {
   username: string;
   displayName: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  squadAffiliation?: string;
+  globalRanking?: string;
+  xp?: number;
+  prestigeLevel?: number;
+  country?: string;
+  bio?: string;
+  predictionAccuracy?: number;
+  winStreak?: number;
+  totalPredictions?: number;
+  squadContributionScore?: number;
+  fantasyPoints?: number;
+  territoryWins?: number;
+  favoriteClub?: string;
+  favoriteNationalTeam?: string;
 };
 
 export type Preferences = {
   theme: ThemeMode;
+  accentColor: string;
+  reduceMotion: boolean;
   notifications: {
     push: boolean;
     email: boolean;
     merchant: boolean;
     ai: boolean;
     transactions: boolean;
+    matchReminders: boolean;
+    squadMentions: boolean;
+    liveScoreAlerts: boolean;
+    transferNewsAlerts: boolean;
+    challengeInvites: boolean;
+  };
+  privacy: {
+    publicProfile: boolean;
+    squadInvites: boolean;
+    showActivity: boolean;
+    directMessages: boolean;
   };
   security: {
     biometrics: boolean;
     approvalLimit: string;
     requireApproval: boolean;
+    activeSessions: boolean;
   };
 };
 
@@ -82,17 +112,31 @@ type AppState = {
 
 const defaultPreferences: Preferences = {
   theme: "dark",
+  accentColor: "#18e3bd",
+  reduceMotion: false,
   notifications: {
     push: false,
     email: false,
     merchant: true,
     ai: true,
-    transactions: true
+    transactions: true,
+    matchReminders: true,
+    squadMentions: true,
+    liveScoreAlerts: true,
+    transferNewsAlerts: true,
+    challengeInvites: true
+  },
+  privacy: {
+    publicProfile: true,
+    squadInvites: true,
+    showActivity: true,
+    directMessages: true
   },
   security: {
     biometrics: false,
     approvalLimit: "100",
-    requireApproval: true
+    requireApproval: true,
+    activeSessions: true
   }
 };
 
@@ -136,6 +180,7 @@ export const useAppStore = create<AppState>()(
             ...state.preferences,
             ...preferences,
             notifications: { ...state.preferences.notifications, ...(preferences.notifications ?? {}) },
+            privacy: { ...state.preferences.privacy, ...(preferences.privacy ?? {}) },
             security: { ...state.preferences.security, ...(preferences.security ?? {}) }
           }
         })),
@@ -172,6 +217,22 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "arc-one-state",
+      version: 2,
+      merge: (persisted, current) => {
+        const next = persisted as Partial<AppState> | undefined;
+        return {
+          ...current,
+          ...next,
+          profile: { ...current.profile, ...(next?.profile ?? {}) },
+          preferences: {
+            ...current.preferences,
+            ...(next?.preferences ?? {}),
+            notifications: { ...current.preferences.notifications, ...(next?.preferences?.notifications ?? {}) },
+            privacy: { ...current.preferences.privacy, ...(next?.preferences?.privacy ?? {}) },
+            security: { ...current.preferences.security, ...(next?.preferences?.security ?? {}) }
+          }
+        };
+      },
       partialize: (state) => ({
         walletMode: state.walletMode,
         embeddedAddress: state.embeddedAddress,

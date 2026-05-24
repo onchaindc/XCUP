@@ -373,8 +373,8 @@ export function SquadsPage() {
             <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Squad wars</p>
-                  <h2 className="mt-1 text-xl font-black text-white">Active competitions</h2>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Squad matches</p>
+                  <h2 className="mt-1 text-xl font-black text-white">Active matches</h2>
                 </div>
                 <Swords size={18} className="text-[#f5a524]" aria-hidden="true" />
               </div>

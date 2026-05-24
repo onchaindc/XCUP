@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   buildSquadRanking,
+  getFallbackCaptainApplicants,
   getFallbackMembers,
   getFallbackMessages,
   getFallbackSquads,
@@ -31,6 +32,7 @@ function roomFor(id: string) {
 
   const members = Array.from((getFallbackMembers().get(id) ?? new Map()).values());
   const messages = getFallbackMessages().filter((message) => message.squadId === id);
+  const captainApplicants = getFallbackCaptainApplicants().get(id) ?? [];
   const voteMap = getFallbackVotes().get(id) ?? new Map();
   const votes = new Map<string, string[]>();
   voteMap.forEach((candidate, voter) => {
@@ -47,6 +49,7 @@ function roomFor(id: string) {
     squad,
     members,
     messages,
+    captainApplicants,
     captainVotes,
     competitions: competitions(squad.name),
     liveActivity: [
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const payload = (await request.json().catch(() => null)) as {
-    action?: "message" | "reaction" | "tip" | "vote";
+    action?: "message" | "reaction" | "tip" | "vote" | "applyCaptain";
     address?: string;
     body?: string;
     messageId?: string;
@@ -84,6 +87,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     amount?: string;
     to?: string;
     candidate?: string;
+    candidateName?: string;
+    statement?: string;
     attachment?: SquadMessage["attachment"];
     replyTo?: string | null;
   } | null;
@@ -129,8 +134,52 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ room: roomFor(id) });
   }
 
+  if (payload.action === "applyCaptain") {
+    const applicants = getFallbackCaptainApplicants();
+    const squadApplicants = applicants.get(id) ?? [];
+    const name = payload.candidateName?.trim() || toMemberLabel(address);
+    const nextApplicant = {
+      address,
+      name,
+      statement: payload.statement?.trim() || undefined,
+      appliedAt: new Date().toISOString(),
+      elo: null,
+      record: null,
+      achievements: 0
+    };
+    applicants.set(id, [nextApplicant, ...squadApplicants.filter((item) => item.address !== address)]);
+    return NextResponse.json({ room: roomFor(id) });
+  }
+
   const voteMap = getFallbackVotes().get(id) ?? new Map<string, string>();
-  voteMap.set(address, payload.candidate || address);
+  voteMap.set(address, payload.candidate?.trim() || address);
   getFallbackVotes().set(id, voteMap);
   return NextResponse.json({ room: roomFor(id) });
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const payload = (await request.json().catch(() => null)) as { address?: string } | null;
+  const address = normalizeAddress(payload?.address);
+  const squads = getFallbackSquads();
+  const index = squads.findIndex((item) => item.id === id);
+  const squad = index >= 0 ? squads[index] : null;
+
+  if (!squad) {
+    return NextResponse.json({ error: "Squad not found." }, { status: 404 });
+  }
+
+  if (squad.creator && squad.creator !== address) {
+    return NextResponse.json({ error: "Only the squad creator can delete this squad." }, { status: 403 });
+  }
+
+  squads.splice(index, 1);
+  getFallbackMembers().delete(id);
+  getFallbackVotes().delete(id);
+  getFallbackCaptainApplicants().delete(id);
+
+  const remainingMessages = getFallbackMessages().filter((message) => message.squadId !== id);
+  getFallbackMessages().splice(0, getFallbackMessages().length, ...remainingMessages);
+
+  return NextResponse.json({ ok: true });
 }

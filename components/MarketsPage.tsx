@@ -180,7 +180,7 @@ export function MarketsPage() {
                   <Stat label="Tracked" value={String(events.length)} icon={Trophy} />
                 </div>
               </div>
-              {refreshing ? <p className="mt-4 rounded-lg border border-[#18e3bd]/20 bg-[#18e3bd]/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#80ffe2]">Refreshing live scores without clearing the board</p> : null}
+              {refreshing ? <p className="mt-4 rounded-lg border border-[#18e3bd]/20 bg-[#18e3bd]/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#80ffe2]">Refreshing</p> : null}
               <div className="mt-5 flex flex-wrap gap-2">
                 {sports.map((sport) => (
                   <button

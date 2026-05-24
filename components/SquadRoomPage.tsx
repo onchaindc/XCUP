@@ -4,15 +4,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   BarChart3,
+  Camera,
   Crown,
   Gift,
   ImagePlus,
   Laugh,
   MessageCircle,
-  Paperclip,
+  Play,
+  Search,
   Send,
   Sparkles,
   Swords,
+  Trash2,
   Trophy,
   Users,
   Vote,
@@ -20,10 +23,12 @@ import {
   Zap
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
 import type { SquadMessage, SquadRoom } from "@/lib/squads";
+import { clubsForSport, slotsForSport, type LineupSlot, type PlayerOption, type PlayerSport } from "@/lib/player-catalog";
 import { xLayerTestnet } from "@/lib/arc";
 import { pickWalletConnector } from "@/lib/wallet";
 import { errorMessage } from "@/lib/utils";
@@ -39,6 +44,7 @@ const gifPicks = [
 ];
 
 export function SquadRoomPage({ id }: { id: string }) {
+  const router = useRouter();
   const [showLoader, setShowLoader] = useState(true);
   const [room, setRoom] = useState<SquadRoom | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +55,8 @@ export function SquadRoomPage({ id }: { id: string }) {
   const [replyTo, setReplyTo] = useState<SquadMessage | null>(null);
   const [attachment, setAttachment] = useState<SquadMessage["attachment"]>(null);
   const [typing, setTyping] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const localMessagesKey = `xcup-squad-chat-${id}`;
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({
     address,
@@ -77,7 +85,11 @@ export function SquadRoomPage({ id }: { id: string }) {
         }
         const data = (await response.json()) as { room: SquadRoom };
         if (!cancelled) {
-          setRoom(data.room);
+          setRoom((current) => {
+            const localMessages = loadLocalMessages(localMessagesKey);
+            const messages = mergeMessages(data.room.messages, localMessages);
+            return { ...(current ?? data.room), ...data.room, messages };
+          });
           setStatus("");
         }
       } catch (error) {
@@ -97,7 +109,7 @@ export function SquadRoomPage({ id }: { id: string }) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [id]);
+  }, [id, localMessagesKey]);
 
   async function connectWallet() {
     const connector = pickWalletConnector(connectors);
@@ -129,6 +141,7 @@ export function SquadRoomPage({ id }: { id: string }) {
       return;
     }
     setRoom(data.room);
+    persistLocalMessages(localMessagesKey, data.room.messages);
     setStatus("");
   }
 
@@ -141,6 +154,39 @@ export function SquadRoomPage({ id }: { id: string }) {
     setReplyTo(null);
     setAttachment(null);
     setTyping(false);
+  }
+
+  async function uploadImage(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setStatus("Choose an image file.");
+      return;
+    }
+    if (file.size > 1_400_000) {
+      setStatus("Image is too large. Keep uploads under 1.4MB for the local chat cache.");
+      return;
+    }
+    const url = await readFileAsDataUrl(file);
+    setAttachment({ type: "image", url, label: file.name });
+    setStatus("");
+  }
+
+  async function deleteSquad() {
+    if (!address) {
+      setStatus("Connect the creator wallet to delete this squad.");
+      return;
+    }
+    const response = await fetch(`/api/squads/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ address })
+    });
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) {
+      setStatus(data.error || "Unable to delete squad.");
+      return;
+    }
+    window.localStorage.removeItem(localMessagesKey);
+    router.push("/squads");
   }
 
   const tabs = useMemo(
@@ -188,6 +234,10 @@ export function SquadRoomPage({ id }: { id: string }) {
                     {["Online", "Live activity", "Ranking", "Competitions"].map((item) => (
                       <span key={item} className="rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs font-bold text-white/70">{item}</span>
                     ))}
+                    <button className="rounded-lg border border-[#ff5c39]/30 bg-[#ff5c39]/10 px-2.5 py-1 text-xs font-black text-[#ffb09d] transition hover:bg-[#ff5c39]/18" type="button" onClick={() => void deleteSquad()}>
+                      <Trash2 className="mr-1 inline" size={13} aria-hidden="true" />
+                      Delete squad
+                    </button>
                   </div>
                 </div>
                 <div className="grid gap-2">
@@ -230,6 +280,8 @@ export function SquadRoomPage({ id }: { id: string }) {
                         setReplyTo={setReplyTo}
                         setTyping={setTyping}
                         setAttachment={setAttachment}
+                        fileInputRef={fileInputRef}
+                        uploadImage={uploadImage}
                         sendMessage={sendMessage}
                         react={(messageId, emoji) => void roomAction({ action: "reaction", messageId, emoji })}
                         tip={(to) => void roomAction({ action: "tip", to, amount: "5" })}
@@ -238,7 +290,11 @@ export function SquadRoomPage({ id }: { id: string }) {
                   ) : null}
                   {tab === "captain" ? (
                     <motion.section key="captain" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-                      <CaptainPanel room={room} vote={(candidate) => void roomAction({ action: "vote", candidate })} />
+                      <CaptainPanel
+                        room={room}
+                        vote={(candidate) => void roomAction({ action: "vote", candidate })}
+                        apply={(candidateName, statement) => void roomAction({ action: "applyCaptain", candidateName, statement })}
+                      />
                     </motion.section>
                   ) : null}
                 </AnimatePresence>
@@ -311,6 +367,8 @@ function ChatPanel({
   setReplyTo,
   setTyping,
   setAttachment,
+  fileInputRef,
+  uploadImage,
   sendMessage,
   react,
   tip
@@ -324,12 +382,16 @@ function ChatPanel({
   setReplyTo: (value: SquadMessage | null) => void;
   setTyping: (value: boolean) => void;
   setAttachment: (value: SquadMessage["attachment"]) => void;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  uploadImage: (file: File) => void | Promise<void>;
   sendMessage: () => void;
   react: (messageId: string, emoji: string) => void;
   tip: (to: string) => void;
 }) {
+  const visibleMessages = room.messages.slice().reverse();
+
   return (
-    <section className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.045]">
+    <section className="flex min-h-[42rem] flex-col overflow-hidden rounded-lg border border-white/10 bg-white/[0.045]">
       <div className="flex items-center justify-between border-b border-white/10 p-4">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Squad chat</p>
@@ -337,8 +399,8 @@ function ChatPanel({
         </div>
         {typing ? <span className="rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 px-2 py-1 text-[11px] font-black text-[#80ffe2]">Typing</span> : null}
       </div>
-      <div className="grid max-h-[34rem] gap-3 overflow-y-auto p-4">
-        {room.messages.map((item) => (
+      <div className="grid min-h-[28rem] flex-1 content-start gap-3 overflow-y-auto p-4">
+        {visibleMessages.map((item) => (
           <motion.article key={item.id} className="rounded-lg border border-white/10 bg-black/35 p-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -365,6 +427,19 @@ function ChatPanel({
       <div className="border-t border-white/10 p-4">
         {replyTo ? <p className="mb-2 rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-white/58">Replying to {short(replyTo.author)} <button className="font-black text-white" type="button" onClick={() => setReplyTo(null)}>clear</button></p> : null}
         {attachment ? <p className="mb-2 rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 px-3 py-2 text-xs font-bold text-[#80ffe2]">{attachment.type.toUpperCase()} attached</p> : null}
+        <input
+          ref={fileInputRef}
+          className="hidden"
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              void uploadImage(file);
+            }
+            event.target.value = "";
+          }}
+        />
         <div className="flex gap-2">
           <input
             className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#18e3bd]/50"
@@ -375,7 +450,7 @@ function ChatPanel({
             }}
             placeholder="Talk tactics, goals, and signals..."
           />
-          <button className="grid h-12 w-12 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-white hover:bg-white/12" type="button" onClick={() => setAttachment({ type: "image", url: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=900&q=80", label: "Football upload" })} aria-label="Upload image">
+          <button className="grid h-12 w-12 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-white hover:bg-white/12" type="button" onClick={() => fileInputRef.current?.click()} aria-label="Upload image">
             <ImagePlus size={17} aria-hidden="true" />
           </button>
           <button className="grid h-12 w-12 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-white hover:bg-white/12" type="button" onClick={() => setAttachment({ type: "gif", url: gifPicks[Math.floor(Math.random() * gifPicks.length)], label: "Matchday GIF" })} aria-label="Send GIF">
@@ -390,22 +465,83 @@ function ChatPanel({
   );
 }
 
-function CaptainPanel({ room, vote }: { room: SquadRoom; vote: (candidate: string) => void }) {
-  const candidates = room.members.length ? room.members : [{ address: room.squad.creator ?? "open", label: "Open captain", joinedAt: room.squad.createdAt, online: true }];
+function CaptainPanel({
+  room,
+  vote,
+  apply
+}: {
+  room: SquadRoom;
+  vote: (candidate: string) => void;
+  apply: (candidateName: string, statement: string) => void;
+}) {
+  const [voteName, setVoteName] = useState("");
+  const [applicationName, setApplicationName] = useState("");
+  const [statement, setStatement] = useState("");
+  const rankedApplicants = room.captainApplicants
+    .slice()
+    .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0) || new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
+
   return (
-    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Captain vote</p>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        {candidates.map((member) => {
-          const result = room.captainVotes.find((item) => item.candidate === member.address);
-          return (
-            <button key={member.address} className="rounded-lg border border-white/10 bg-black/35 p-4 text-left transition hover:border-[#18e3bd]/40 hover:bg-[#18e3bd]/10" type="button" onClick={() => vote(member.address)}>
-              <Crown size={18} className="text-[#f5a524]" aria-hidden="true" />
-              <p className="mt-2 font-black text-white">{member.label ?? short(member.address)}</p>
-              <p className="mt-1 text-sm text-white/50">{result?.votes ?? 0} votes</p>
+    <section className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.045] p-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Captain vote</p>
+        <h2 className="mt-1 text-2xl font-black text-white">Nominate a leader</h2>
+        <div className="mt-4 grid gap-3 rounded-lg border border-white/10 bg-black/35 p-3">
+          <label className="grid gap-2 text-sm font-bold text-white/58">
+            Desired captain name
+            <input className="rounded-lg border border-white/10 bg-black/40 px-3 py-3 text-base font-black text-white outline-none focus:border-[#18e3bd]/60" value={voteName} onChange={(event) => setVoteName(event.target.value)} placeholder="Enter captain name" />
+          </label>
+          <button className="flex w-fit items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={!voteName.trim()} onClick={() => {
+            vote(voteName.trim());
+            setVoteName("");
+          }}>
+            <Vote size={16} aria-hidden="true" />
+            Vote
+          </button>
+        </div>
+        <div className="mt-4 grid gap-2">
+          {room.captainVotes.map((result) => (
+            <div key={result.candidate} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/35 p-3">
+              <div>
+                <p className="font-black text-white">{result.candidate}</p>
+                <p className="text-xs font-bold text-white/42">{result.voters.length} voter{result.voters.length === 1 ? "" : "s"}</p>
+              </div>
+              <span className="rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 px-3 py-1 text-sm font-black text-[#80ffe2]">{result.votes}</span>
+            </div>
+          ))}
+          {!room.captainVotes.length ? <p className="rounded-lg border border-white/10 bg-black/35 p-4 text-sm text-white/58">No captain votes yet.</p> : null}
+        </div>
+      </div>
+      <div className="grid content-start gap-4">
+        <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Apply for captain</p>
+          <div className="mt-3 grid gap-3">
+            <input className="rounded-lg border border-white/10 bg-black/40 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#18e3bd]/60" value={applicationName} onChange={(event) => setApplicationName(event.target.value)} placeholder="Your manager name" />
+            <textarea className="min-h-24 resize-none rounded-lg border border-white/10 bg-black/40 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#18e3bd]/60" value={statement} onChange={(event) => setStatement(event.target.value)} placeholder="Why should the squad trust your captaincy?" />
+            <button className="rounded-lg bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={!applicationName.trim()} onClick={() => {
+              apply(applicationName.trim(), statement.trim());
+              setApplicationName("");
+              setStatement("");
+            }}>
+              Submit application
             </button>
-          );
-        })}
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Applicant track record</p>
+          <div className="mt-3 grid gap-2">
+            {rankedApplicants.map((applicant) => (
+              <div key={applicant.address} className="rounded-lg border border-white/10 bg-white/[0.045] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-black text-white">{applicant.name}</p>
+                  <span className="text-xs font-black text-[#18e3bd]">ELO {applicant.elo ?? "pending"}</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-white/52">{applicant.statement || "No captain statement yet."}</p>
+              </div>
+            ))}
+            {!rankedApplicants.length ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-4 text-sm text-white/58">No captain applications yet. Real records appear after users start competing.</p> : null}
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -459,7 +595,7 @@ function MiniGameModal({ modal, onClose }: { modal: Modal; onClose: () => void }
     <AnimatePresence>
       {modal ? (
         <motion.div className="fixed inset-0 z-[90] grid place-items-end bg-black/70 p-3 backdrop-blur-md sm:place-items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <motion.section className="w-full max-w-3xl overflow-hidden rounded-lg border border-white/10 bg-[#070911] text-white shadow-2xl" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}>
+          <motion.section className="max-h-[92dvh] w-full max-w-5xl overflow-y-auto rounded-lg border border-white/10 bg-[#070911] text-white shadow-2xl" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}>
             <div className="flex items-center justify-between border-b border-white/10 p-4">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Squad module</p>
@@ -503,34 +639,287 @@ function StockMarketModule() {
 }
 
 function ShootoutModule() {
-  const [target, setTarget] = useState("");
+  const directions = ["Left", "Center", "Right"] as const;
+  const modes = ["Solo Practice", "1v1 Match", "Squad vs Squad", "Ranked Mode"] as const;
+  const [mode, setMode] = useState<(typeof modes)[number]>("Solo Practice");
+  const [phase, setPhase] = useState<"pre" | "power" | "timing" | "result">("pre");
+  const [target, setTarget] = useState<(typeof directions)[number]>("Center");
+  const [power, setPower] = useState(52);
+  const [timing, setTiming] = useState(50);
+  const [round, setRound] = useState(1);
+  const [score, setScore] = useState({ player: 0, opponent: 0 });
+  const [history, setHistory] = useState<string[]>([]);
+  const [countdown, setCountdown] = useState(3);
+  const [result, setResult] = useState("Choose mode and start the duel.");
+  const [movingPower, setMovingPower] = useState(true);
+  const [movingTiming, setMovingTiming] = useState(true);
+
+  useEffect(() => {
+    if (phase !== "power") return;
+    const interval = window.setInterval(() => setPower((value) => (value >= 96 ? 18 : value + 7)), 80);
+    return () => window.clearInterval(interval);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "timing") return;
+    const interval = window.setInterval(() => setTiming((value) => (value >= 96 ? 4 : value + 9)), 70);
+    return () => window.clearInterval(interval);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "pre") return;
+    setCountdown(3);
+    const interval = window.setInterval(() => setCountdown((value) => Math.max(0, value - 1)), 650);
+    const timeout = window.setTimeout(() => {
+      setPhase("power");
+      setResult("Lock power.");
+      setMovingPower(true);
+      setMovingTiming(true);
+    }, 2050);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [phase, round]);
+
+  function lockPower() {
+    setMovingPower(false);
+    setPhase("timing");
+    setResult("Lock timing.");
+  }
+
+  function lockTiming() {
+    setMovingTiming(false);
+    const keeper = directions[Math.floor(Math.random() * directions.length)];
+    const accuracy = 100 - Math.abs(timing - 50) * 2;
+    const overhit = power > 84 && accuracy < 52;
+    const saved = keeper === target && accuracy < 86;
+    const goal = !overhit && !saved;
+    const note = overhit ? "Missed high from bad timing." : saved ? `Saved. Keeper went ${keeper}.` : `Goal. Keeper went ${keeper}.`;
+    setScore((current) => ({ ...current, player: current.player + (goal ? 1 : 0) }));
+    setHistory((current) => [`R${round}: ${target} / ${power} power / ${accuracy}% timing - ${goal ? "Goal" : "No goal"}`, ...current].slice(0, 8));
+    setResult(note);
+    setPhase("result");
+  }
+
+  function nextRound() {
+    setRound((current) => current + 1);
+    setScore((current) => ({ ...current, opponent: current.opponent + (Math.random() > 0.52 ? 1 : 0) }));
+    setPhase("pre");
+  }
+
   return (
-    <div className="grid gap-4">
-      <div className="grid aspect-[16/9] place-items-end rounded-lg border border-white/10 bg-[radial-gradient(circle_at_50%_75%,rgba(24,227,189,0.22),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] p-4">
-        <div className="grid w-full grid-cols-3 gap-2">
-          {["Left", "Center", "Right"].map((item) => (
-            <button key={item} className={`rounded-lg border px-3 py-5 text-sm font-black ${target === item ? "border-[#18e3bd] bg-[#18e3bd]/20" : "border-white/10 bg-black/35"}`} type="button" onClick={() => setTarget(item)}>{item}</button>
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid gap-4">
+        <div className="flex flex-wrap gap-2">
+          {modes.map((item) => (
+            <button key={item} className={`rounded-lg border px-3 py-2 text-xs font-black transition ${mode === item ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.05] text-white/62 hover:bg-white/10 hover:text-white"}`} type="button" onClick={() => setMode(item)}>{item}</button>
           ))}
         </div>
+        <div className="relative min-h-[24rem] overflow-hidden rounded-lg border border-white/10 bg-[radial-gradient(circle_at_50%_82%,rgba(24,227,189,0.22),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] p-4">
+          <div className="absolute left-[12%] right-[12%] top-8 h-32 border-4 border-white/35 border-b-0" />
+          <motion.div className="absolute bottom-16 h-5 w-5 rounded-full bg-white shadow-[0_0_22px_rgba(255,255,255,0.8)]" animate={{ left: target === "Left" ? "24%" : target === "Right" ? "72%" : "48%", y: phase === "result" ? -155 : 0 }} transition={{ type: "spring", stiffness: 90, damping: 14 }} />
+          <motion.div className="absolute top-28 h-12 w-16 rounded-t-full border border-[#18e3bd]/35 bg-[#18e3bd]/25" animate={{ left: phase === "result" ? target === "Left" ? "18%" : target === "Right" ? "70%" : "46%" : "46%", rotate: phase === "result" ? target === "Left" ? -24 : target === "Right" ? 24 : 0 : 0 }} />
+          <div className="absolute inset-x-4 bottom-4 grid grid-cols-3 gap-2">
+            {directions.map((item) => (
+              <button key={item} className={`rounded-lg border px-3 py-5 text-sm font-black ${target === item ? "border-[#18e3bd] bg-[#18e3bd]/20" : "border-white/10 bg-black/35"}`} type="button" onClick={() => setTarget(item)}>{item}</button>
+            ))}
+          </div>
+          {phase === "pre" ? <div className="absolute inset-0 grid place-items-center bg-black/25 text-7xl font-black text-white">{countdown || "GO"}</div> : null}
+        </div>
+        <div className="grid gap-3 rounded-lg border border-white/10 bg-black/35 p-4">
+          <Meter label="Power" value={power} active={phase === "power" && movingPower} />
+          <Meter label="Timing" value={timing} active={phase === "timing" && movingTiming} />
+          <div className="flex flex-wrap gap-2">
+            <button className="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={phase !== "power"} onClick={lockPower}>
+              <Zap size={16} aria-hidden="true" />
+              Lock power
+            </button>
+            <button className="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={phase !== "timing"} onClick={lockTiming}>
+              <Play size={16} aria-hidden="true" />
+              Shoot
+            </button>
+            <button className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-black text-white transition hover:bg-white/12 disabled:opacity-50" type="button" disabled={phase !== "result"} onClick={nextRound}>
+              Next round
+            </button>
+          </div>
+        </div>
       </div>
-      <p className="text-sm font-bold text-white/60">{target ? `Shot locked: ${target}. Streak board ready.` : "Choose shot direction."}</p>
+      <aside className="grid content-start gap-3">
+        <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">{mode}</p>
+          <p className="mt-3 text-3xl font-black">{score.player} - {score.opponent}</p>
+          <p className="mt-2 text-sm leading-6 text-white/60">Round {round} of 5. Ties continue into sudden death.</p>
+          <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm font-bold text-white/70">{result}</p>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Shot history</p>
+          <div className="mt-3 grid gap-2">
+            {history.map((item) => <p key={item} className="rounded-md bg-white/[0.05] p-2 text-xs font-bold text-white/58">{item}</p>)}
+            {!history.length ? <p className="text-sm text-white/52">Shots appear here after the first round.</p> : null}
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }
 
 function StartingXiModule() {
-  const players = ["GK", "LB", "CB", "CB", "RB", "CM", "CM", "AM", "LW", "ST", "RW"];
+  const [sport, setSport] = useState<PlayerSport>("football");
+  const [activeSlot, setActiveSlot] = useState<LineupSlot>(slotsForSport("football")[0]);
+  const [clubId, setClubId] = useState(clubsForSport("football")[0]?.id ?? "");
+  const [players, setPlayers] = useState<PlayerOption[]>([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [lineup, setLineup] = useState<Record<string, PlayerOption>>({});
+  const slots = slotsForSport(sport);
+  const clubs = clubsForSport(sport);
+  const selectedXp = Object.values(lineup).reduce((total, player) => total + player.name.length * 6 + player.position.length * 10, 0);
+
+  useEffect(() => {
+    const nextSlots = slotsForSport(sport);
+    const nextClubs = clubsForSport(sport);
+    setActiveSlot(nextSlots[0]);
+    setClubId(nextClubs[0]?.id ?? "");
+    setLineup({});
+  }, [sport]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPlayers() {
+      setLoadingPlayers(true);
+      try {
+        const response = await fetch(`/api/players?sport=${sport}&club=${encodeURIComponent(clubId)}&position=${encodeURIComponent(activeSlot.position)}`, { cache: "no-store" });
+        const data = (await response.json()) as { players: PlayerOption[] };
+        if (!cancelled) setPlayers(data.players);
+      } catch {
+        if (!cancelled) setPlayers([]);
+      } finally {
+        if (!cancelled) setLoadingPlayers(false);
+      }
+    }
+    if (clubId) void loadPlayers();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSlot.position, clubId, sport]);
+
   return (
-    <div className="rounded-lg border border-white/10 bg-[linear-gradient(135deg,rgba(24,227,189,0.16),rgba(66,165,255,0.06)),#07110d] p-4">
-      <div className="grid aspect-[3/2] grid-cols-4 gap-3">
-        {players.map((role, index) => (
-          <motion.button key={`${role}-${index}`} className="rounded-lg border border-white/15 bg-black/35 text-xs font-black text-white shadow-lg" type="button" whileHover={{ scale: 1.04 }}>
-            {role}
-          </motion.button>
-        ))}
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="rounded-lg border border-white/10 bg-[linear-gradient(135deg,rgba(24,227,189,0.16),rgba(66,165,255,0.06)),#07110d] p-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Manager mode</p>
+            <h3 className="text-xl font-black text-white">Starting XI Battles</h3>
+          </div>
+          <div className="flex rounded-lg border border-white/10 bg-black/35 p-1">
+            {(["football", "basketball"] as PlayerSport[]).map((item) => (
+              <button key={item} className={`rounded-md px-3 py-2 text-xs font-black capitalize ${sport === item ? "bg-white text-black" : "text-white/58 hover:bg-white/10"}`} type="button" onClick={() => setSport(item)}>{item}</button>
+            ))}
+          </div>
+        </div>
+        <div className="relative aspect-[3/4] min-h-[32rem] overflow-hidden rounded-lg border border-white/10 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.04)_0_1px,transparent_1px_84px),linear-gradient(180deg,rgba(24,227,189,0.18),rgba(2,7,6,0.95))]">
+          <div className="absolute inset-x-[8%] top-[8%] h-[84%] rounded-[42%] border border-white/15" />
+          {slots.map((slot) => {
+            const pick = lineup[slot.id];
+            return (
+              <motion.button
+                key={slot.id}
+                className={`absolute grid min-h-16 w-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-lg border p-2 text-center text-xs font-black shadow-xl transition ${activeSlot.id === slot.id ? "border-[#18e3bd] bg-[#18e3bd]/20" : "border-white/15 bg-black/55 hover:bg-white/10"}`}
+                style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
+                type="button"
+                whileHover={{ scale: 1.04 }}
+                onClick={() => setActiveSlot(slot)}
+              >
+                {pick?.image ? <img className="h-8 w-8 rounded-full object-cover" src={pick.image} alt="" /> : null}
+                <span className="line-clamp-2">{pick?.name ?? slot.label}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+      <aside className="grid content-start gap-3 rounded-lg border border-white/10 bg-black/35 p-4">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Select player</p>
+          <p className="mt-1 text-lg font-black text-white">{activeSlot.label} slot</p>
+        </div>
+        <select className="rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-black text-white outline-none focus:border-[#18e3bd]/60" value={clubId} onChange={(event) => setClubId(event.target.value)}>
+          {clubs.map((club) => <option key={club.id} value={club.id}>{club.name} - {club.league}</option>)}
+        </select>
+        <div className="grid max-h-[24rem] gap-2 overflow-y-auto pr-1">
+          {loadingPlayers ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm text-white/58">Loading players...</p> : null}
+          {!loadingPlayers && players.map((player) => (
+            <button key={player.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3 text-left transition hover:border-[#18e3bd]/40 hover:bg-[#18e3bd]/10" type="button" onClick={() => setLineup((current) => ({ ...current, [activeSlot.id]: player }))}>
+              {player.image ? <img className="h-11 w-11 rounded-full object-cover" src={player.image} alt="" /> : <span className="grid h-11 w-11 place-items-center rounded-full bg-white/[0.08]"><Camera size={16} aria-hidden="true" /></span>}
+              <span className="min-w-0">
+                <span className="block truncate font-black text-white">{player.name}</span>
+                <span className="block text-xs font-bold text-white/42">{player.position} - {player.club}</span>
+              </span>
+            </button>
+          ))}
+          {!loadingPlayers && !players.length ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm leading-6 text-white/58">No roster returned for this slot yet. Try another club or position.</p> : null}
+        </div>
+        <div className="rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 p-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#80ffe2]">XP bar</p>
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-black/50">
+            <div className="h-full rounded-full bg-[#18e3bd]" style={{ width: `${Math.min(100, selectedXp / 35)}%` }} />
+          </div>
+          <p className="mt-2 text-sm font-black text-white">{selectedXp} manager XP</p>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function Meter({ label, value, active }: { label: string; value: number; active: boolean }) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between text-xs font-black uppercase tracking-[0.14em] text-white/48">
+        <span>{label}</span>
+        <span className={active ? "text-[#18e3bd]" : "text-white"}>{value}</span>
+      </div>
+      <div className="h-3 overflow-hidden rounded-full bg-white/[0.08]">
+        <motion.div className="h-full rounded-full bg-[#18e3bd]" animate={{ width: `${value}%` }} />
       </div>
     </div>
   );
+}
+
+function loadLocalMessages(key: string) {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as SquadMessage[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistLocalMessages(key: string, messages: SquadMessage[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(messages.slice(0, 250)));
+  } catch {
+  }
+}
+
+function mergeMessages(remote: SquadMessage[], local: SquadMessage[]) {
+  const seen = new Set<string>();
+  return [...remote, ...local]
+    .filter((message) => {
+      if (seen.has(message.id)) return false;
+      seen.add(message.id);
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function short(value: string) {

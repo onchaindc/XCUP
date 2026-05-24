@@ -214,10 +214,10 @@ export function TopHeader({
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="#profile" aria-label="Profile">
+          <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="/profile" aria-label="Profile">
             <UserRound size={16} aria-hidden="true" />
           </Link>
-          <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="#settings" aria-label="Settings">
+          <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="/profile?tab=settings" aria-label="Settings">
             <Settings2 size={16} aria-hidden="true" />
           </Link>
           {isConnected ? (

@@ -39,6 +39,16 @@ export type SquadMessage = {
   tipAmount?: string;
 };
 
+export type CaptainApplicant = {
+  address: string;
+  name: string;
+  statement?: string;
+  appliedAt: string;
+  elo?: number | null;
+  record?: string | null;
+  achievements?: number;
+};
+
 export type CaptainVote = {
   candidate: string;
   votes: number;
@@ -57,6 +67,7 @@ export type SquadRoom = {
   squad: SquadRecord;
   members: SquadMember[];
   messages: SquadMessage[];
+  captainApplicants: CaptainApplicant[];
   captainVotes: CaptainVote[];
   liveActivity: string[];
   competitions: SquadCompetition[];
@@ -75,6 +86,7 @@ declare global {
   var xCupSquads: SquadRecord[] | undefined;
   var xCupSquadMembers: Map<string, Map<string, SquadMember>> | undefined;
   var xCupSquadMessages: SquadMessage[] | undefined;
+  var xCupSquadCaptainApplicants: Map<string, CaptainApplicant[]> | undefined;
   var xCupSquadVotes: Map<string, Map<string, string>> | undefined;
 }
 
@@ -91,6 +103,11 @@ export function getFallbackMembers() {
 export function getFallbackMessages() {
   globalThis.xCupSquadMessages ??= [];
   return globalThis.xCupSquadMessages;
+}
+
+export function getFallbackCaptainApplicants() {
+  globalThis.xCupSquadCaptainApplicants ??= new Map();
+  return globalThis.xCupSquadCaptainApplicants;
 }
 
 export function getFallbackVotes() {
