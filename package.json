@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "deploy:xlayer": "node scripts/deploy-xcup-arena.mjs",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit"
   },
@@ -31,6 +32,7 @@
     "eslint": "^9.39.1",
     "eslint-config-next": "16.2.6",
     "postcss": "^8.5.6",
+    "solc": "^0.8.35",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.3"
   }

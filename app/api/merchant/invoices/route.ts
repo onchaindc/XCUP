@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     checkoutUrl: `https://xcup.example/pay/${invoiceId}`,
     qrPayload: `xcup://pay/${invoiceId}`,
     status: "created",
-    network: "X Layer testnet"
+    network: "X Layer"
   });
 }
 

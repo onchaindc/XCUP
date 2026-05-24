@@ -343,7 +343,7 @@ function PredictionSlip({
           chainId: xLayerTestnet.id
         });
         ticket.txHash = txHash;
-        setConfirmedState({ key: confirmedKey, message: "Prediction submitted on X Layer testnet." });
+        setConfirmedState({ key: confirmedKey, message: "Prediction submitted on X Layer mainnet." });
       } catch (error) {
         setConfirmedState({ key: confirmedKey, message: errorMessage(error, "Prediction was not submitted.") });
         return;

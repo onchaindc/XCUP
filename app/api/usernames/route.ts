@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     username: `@${username}`,
     available: !address,
     address: address ?? null,
-    network: "X Layer testnet"
+    network: "X Layer"
   });
 }
 

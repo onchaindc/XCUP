@@ -31,7 +31,7 @@ export function BalanceCard({
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(47,140,255,0.22),transparent_30%),radial-gradient(circle_at_85%_30%,rgba(139,92,246,0.18),transparent_32%)]" />
       <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-muted">Arc Testnet balance</p>
+          <p className="text-sm font-semibold text-muted">X Layer balance</p>
           <motion.h2
             className="mt-3 break-words text-[2.55rem] font-black leading-[1.05] tracking-normal text-white sm:text-6xl"
             initial={{ opacity: 0, y: 12 }}
@@ -64,7 +64,7 @@ export function BalanceCard({
       </div>
       {empty && address ? (
         <div className="mt-5 rounded-2xl border border-arcblue/25 bg-arcblue/10 p-4 text-sm font-semibold text-white/82">
-          Your wallet is empty. Claim Arc Testnet assets to begin.
+          Your wallet is empty. Add OKB to begin.
         </div>
       ) : null}
     </Card>

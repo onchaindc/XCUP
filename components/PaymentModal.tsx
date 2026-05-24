@@ -63,7 +63,7 @@ export function PaymentModal({
       return;
     }
     if (!onArc) {
-      setStatus("Wrong network detected. Switch to Arc Testnet before signing.");
+      setStatus("Wrong network detected. Switch to X Layer mainnet before signing.");
       return;
     }
 
@@ -77,7 +77,7 @@ export function PaymentModal({
           ? await sendEmbeddedNativePayment({ privateKey: (await unlockEmbeddedWallet(passcode)).privateKey, to, amount })
           : { hash: await sendTransactionAsync({ to, value, chainId: ARC_CHAIN_ID }), explorerUrl: "" };
       setHash(result.hash);
-      setStatus("Transaction submitted. Waiting for Arc Testnet indexing.");
+      setStatus("Transaction submitted. Waiting for X Layer indexing.");
       const created = addActivity({
         type: "payment",
         title: "Payment submitted",
@@ -227,7 +227,7 @@ export function PaymentModal({
             </div>
             {!onArc ? (
               <Button className="mt-2 w-full" variant="danger" onClick={onRequireSwitch}>
-                Switch to Arc Testnet
+                Switch to X Layer
               </Button>
             ) : null}
           </>

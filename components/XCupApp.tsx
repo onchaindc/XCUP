@@ -120,7 +120,7 @@ export function XCupApp() {
       { label: "Live matches", value: String(liveEvents.length), icon: Radio },
       { label: "Matches", value: String(events.length), icon: Globe2 },
       { label: "Headlines", value: String(news.length), icon: Newspaper },
-      { label: "X Layer", value: isConnected && network.onArc ? "Ready" : "Testnet", icon: ShieldCheck }
+      { label: "X Layer", value: isConnected && network.onArc ? "Ready" : "Mainnet", icon: ShieldCheck }
     ],
     [events.length, isConnected, liveEvents.length, network.onArc, news.length]
   );
@@ -195,6 +195,10 @@ export function TopHeader({
   onConnect: () => void;
   onDisconnect: () => void;
 }) {
+  const network = useNetworkStatus();
+  const addRpcLabel = network.busy === "adding" ? "Adding" : "Add RPC";
+  const switchLabel = network.busy === "switching" ? "Switching" : "Switch";
+
   return (
     <header className="sticky top-0 z-50 mb-4 border-b border-white/10 bg-[#030409]/90 py-3 backdrop-blur-xl">
       <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
@@ -214,6 +218,29 @@ export function TopHeader({
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          {network.wrongNetwork ? (
+            <button
+              className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#ff5c39]/25 bg-[#ff5c39]/12 px-3 py-2 text-xs font-black text-[#ffb09d] transition hover:bg-[#ff5c39]/18 sm:flex"
+              type="button"
+              onClick={() => void network.switchNetwork()}
+              disabled={network.syncing}
+              title="Switch wallet to X Layer mainnet"
+            >
+              <ShieldCheck size={15} aria-hidden="true" />
+              {switchLabel}
+            </button>
+          ) : null}
+          <button
+            className="grid h-10 min-w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] px-2 text-xs font-black text-white/70 transition hover:bg-white/10 hover:text-white sm:flex sm:gap-2 sm:px-3"
+            type="button"
+            onClick={() => void network.addNetwork()}
+            disabled={network.syncing}
+            title="Add X Layer mainnet RPC to wallet"
+            aria-label="Add X Layer mainnet RPC"
+          >
+            <ShieldCheck size={16} aria-hidden="true" />
+            <span className="hidden sm:inline">{addRpcLabel}</span>
+          </button>
           <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="/profile" aria-label="Profile">
             <UserRound size={16} aria-hidden="true" />
           </Link>
@@ -236,6 +263,7 @@ export function TopHeader({
           )}
         </div>
       </div>
+      {network.networkError ? <p className="mt-2 rounded-lg border border-[#ff5c39]/25 bg-[#ff5c39]/10 px-3 py-2 text-xs font-bold text-[#ffb09d]">{network.networkError}</p> : null}
       <nav className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 sm:grid-cols-6 xl:hidden">
         {topNav.map((item) => (
           <Link key={item.label} className="flex min-h-10 items-center justify-center gap-1 rounded-md px-1 text-[11px] font-black text-white/62 transition hover:bg-white/10 hover:text-white" href={item.href}>
@@ -562,18 +590,15 @@ function AgentPanel({ featured }: { featured: LiveSportEvent | null }) {
 
 export function XLayerMark({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 40 40" role="img" aria-label="X Layer">
-      <rect width="8" height="8" x="4" y="4" fill="currentColor" />
-      <rect width="8" height="8" x="16" y="4" fill="currentColor" opacity="0.72" />
-      <rect width="8" height="8" x="4" y="16" fill="currentColor" opacity="0.72" />
-      <rect width="8" height="8" x="28" y="4" fill="currentColor" opacity="0.42" />
-      <rect width="8" height="8" x="16" y="16" fill="currentColor" />
-      <g aria-hidden="true">
-        <path d="M19 13h2v2h4v2.2c0 2-1.3 3.7-3.1 4.2A3.7 3.7 0 0 1 21 23v2h3v2h-8v-2h3v-2c-.4-.4-.7-.9-.9-1.6A4.4 4.4 0 0 1 15 17.2V15h4v-2Zm-2 4v.2c0 .9.5 1.7 1.2 2.1V17H17Zm4.8 2.3c.7-.4 1.2-1.2 1.2-2.1V17h-1.2v2.3Z" fill="#151924" stroke="#f5a524" strokeWidth="0.7" />
-      </g>
-      <rect width="8" height="8" x="28" y="16" fill="currentColor" opacity="0.72" />
-      <rect width="8" height="8" x="4" y="28" fill="currentColor" opacity="0.42" />
-      <rect width="8" height="8" x="16" y="28" fill="currentColor" opacity="0.72" />
+    <svg className={className} viewBox="0 0 40 40" role="img" aria-label="X Cup Arena">
+      <rect width="40" height="40" rx="9" fill="#030409" />
+      <rect width="7" height="7" x="5" y="5" rx="1.5" fill="#ffffff" opacity="0.92" />
+      <rect width="7" height="7" x="14" y="5" rx="1.5" fill="#ffffff" opacity="0.62" />
+      <rect width="7" height="7" x="5" y="14" rx="1.5" fill="#ffffff" opacity="0.62" />
+      <rect width="7" height="7" x="28" y="5" rx="1.5" fill="#ffffff" opacity="0.28" />
+      <rect width="7" height="7" x="28" y="28" rx="1.5" fill="#18e3bd" opacity="0.78" />
+      <path d="M16 12h8v3h4v2.4c0 3-1.9 5.3-4.8 5.9-.5.9-1.2 1.5-2.2 1.8V28h4v3H15v-3h4v-2.9a5 5 0 0 1-2.2-1.8c-2.9-.6-4.8-2.9-4.8-5.9V15h4v-3Zm-1.6 5.3c0 1.1.5 2 1.4 2.6.1-.5.2-1.1.2-1.7v-.9h-1.6Zm9.6.9c0 .6.1 1.2.2 1.7.9-.6 1.4-1.5 1.4-2.6H24v.9Z" fill="#f5a524" />
+      <path d="M18 15h4v3.4c0 1.8-.8 3-2 3s-2-1.2-2-3V15Z" fill="#fff4c7" opacity="0.95" />
     </svg>
   );
 }
