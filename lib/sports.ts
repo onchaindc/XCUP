@@ -77,3 +77,18 @@ export function eventStatusLabel(event: Pick<LiveSportEvent, "status">) {
   }
   return event.status.state || "Scheduled";
 }
+
+export function formatEventTime(event: Pick<LiveSportEvent, "date">) {
+  const scheduled = new Date(event.date);
+  if (Number.isNaN(scheduled.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(scheduled);
+}

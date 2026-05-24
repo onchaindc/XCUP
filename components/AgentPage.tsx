@@ -5,7 +5,7 @@ import { Activity, ArrowRight, Bot, Brain, CheckCircle2, Gauge, Radio, ShieldChe
 import { useEffect, useRef, useState } from "react";
 import { formatUnits, isAddress, keccak256, toBytes } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect, useWriteContract } from "wagmi";
-import { formatLiveEventMatchup, type LiveSportEvent } from "@/lib/sports";
+import { formatEventTime, formatLiveEventMatchup, type LiveSportEvent } from "@/lib/sports";
 import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
@@ -193,7 +193,9 @@ export function AgentPage() {
                   >
                     <span className="block text-[11px] font-black uppercase tracking-[0.16em] opacity-60">{event.league}</span>
                     <span className="mt-1 block font-black">{formatLiveEventMatchup(event)}</span>
-                    <span className="mt-1 block text-xs font-bold opacity-60">{event.status.detail}</span>
+                    <span className="mt-1 block text-xs font-bold opacity-60">
+                      {event.status.detail}{formatEventTime(event) ? ` - ${event.status.state === "in" ? "Started" : "Kickoff"}: ${formatEventTime(event)}` : ""}
+                    </span>
                   </button>
                 ))}
                 {!loading && !events.length ? (

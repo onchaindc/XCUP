@@ -5,7 +5,7 @@ import { AlertCircle, ArrowRight, CalendarClock, CheckCircle2, Radio, RefreshCw,
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, isAddress, keccak256, parseEther, toBytes } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect, useWriteContract } from "wagmi";
-import { formatLiveEventMatchup, type LiveSportEvent } from "@/lib/sports";
+import { formatEventTime, formatLiveEventMatchup, type LiveSportEvent } from "@/lib/sports";
 import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
@@ -232,6 +232,7 @@ export function MarketsPage() {
 
 function MarketEventCard({ event, onPick }: { event: LiveSportEvent; onPick: (pick: string) => void }) {
   const isLive = event.status.state === "in";
+  const scheduledTime = formatEventTime(event);
   const homePick = `${event.homeTeam.shortName} win`;
   const awayPick = `${event.awayTeam.shortName} win`;
 
@@ -243,7 +244,7 @@ function MarketEventCard({ event, onPick }: { event: LiveSportEvent; onPick: (pi
           <h2 className="mt-2 text-2xl font-black text-white">{formatLiveEventMatchup(event)}</h2>
           <p className="mt-2 flex items-center gap-2 text-sm text-white/58">
             <CalendarClock size={15} aria-hidden="true" />
-            {event.status.detail}
+            <span>{event.status.detail}{scheduledTime ? ` - ${isLive ? "Started" : "Kickoff"}: ${scheduledTime}` : ""}</span>
           </p>
         </div>
         <span className={`rounded-lg border px-2 py-1 text-[11px] font-black uppercase ${isLive ? "border-[#18e3bd]/30 bg-[#18e3bd]/10 text-[#80ffe2]" : "border-white/10 bg-white/[0.06] text-white/60"}`}>

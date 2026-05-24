@@ -22,7 +22,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
-import { eventStatusLabel, formatLiveEventMatchup, type LiveSportEvent, type SportsNewsItem } from "@/lib/sports";
+import { eventStatusLabel, formatEventTime, formatLiveEventMatchup, type LiveSportEvent, type SportsNewsItem } from "@/lib/sports";
 import { xLayerTestnet } from "@/lib/arc";
 import type { Preferences, UserProfile } from "@/lib/app-store";
 import { useAppStore } from "@/lib/app-store";
@@ -408,6 +408,7 @@ function LiveBoard({ events, loading, refreshing }: { events: LiveSportEvent[]; 
 
 function EventMiniCard({ event }: { event: LiveSportEvent }) {
   const isLive = event.status.state === "in";
+  const scheduledTime = formatEventTime(event);
   return (
     <article className="rounded-lg border border-white/10 bg-black/35 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -420,7 +421,7 @@ function EventMiniCard({ event }: { event: LiveSportEvent }) {
         </span>
       </div>
       <p className="mt-3 text-sm text-white/58">{event.status.detail}</p>
-      {!isLive ? <p className="mt-1 text-xs font-bold text-white/42">{new Date(event.date).toLocaleString()}</p> : null}
+      {scheduledTime ? <p className="mt-1 text-xs font-bold text-white/42">{isLive ? "Started" : "Kickoff"}: {scheduledTime}</p> : null}
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-black text-white">
         <span className="rounded-md bg-white/[0.06] p-2">{event.awayTeam.shortName} {event.awayTeam.score ?? ""}</span>
         <span className="rounded-md bg-white/[0.06] p-2">{event.homeTeam.shortName} {event.homeTeam.score ?? ""}</span>
