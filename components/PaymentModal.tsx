@@ -8,6 +8,7 @@ import { sendEmbeddedNativePayment, isAddressLike } from "@/lib/chain";
 import { unlockEmbeddedWallet } from "@/lib/embedded-wallet";
 import { useAppStore } from "@/lib/app-store";
 import { ARC_CHAIN_ID, arcTestnet, ARC_EXPLORER_URL } from "@/lib/arc";
+import { errorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -89,7 +90,7 @@ export function PaymentModal({
       }, 2200);
       onRefresh();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Payment failed before submission.");
+      setStatus(errorMessage(error, "Payment failed before submission."));
     } finally {
       setBusy(false);
     }
@@ -208,7 +209,14 @@ export function PaymentModal({
               </a>
             ) : null}
             <div className="mt-5 grid gap-2 sm:grid-cols-2">
-              <Button variant="secondary" onClick={() => void navigator.clipboard.writeText(`arc-one://pay?to=${recipient}&amount=${amount}`)}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void navigator.clipboard.writeText(`arc-one://pay?to=${recipient}&amount=${amount}`).catch((error: unknown) => {
+                    setStatus(errorMessage(error, "Unable to copy payment link."));
+                  });
+                }}
+              >
                 <Copy size={18} aria-hidden="true" />
                 Copy Payment Link
               </Button>

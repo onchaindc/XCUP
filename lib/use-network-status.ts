@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { X_LAYER_TESTNET_CHAIN_ID, xLayerTestnet } from "@/lib/arc";
 import { addArcNetwork, switchToArcNetwork } from "@/lib/network";
+import { errorMessage } from "@/lib/utils";
 
 export function useNetworkStatus() {
   const { isConnected } = useAccount();
@@ -33,8 +34,7 @@ export function useNetworkStatus() {
       await addArcNetwork();
       await switchToArcNetwork();
     } catch (error) {
-      setNetworkError(error instanceof Error ? error.message : "Unable to add X Layer network.");
-      throw error;
+      setNetworkError(errorMessage(error, "Unable to add X Layer network."));
     } finally {
       setBusy("idle");
     }
@@ -46,8 +46,7 @@ export function useNetworkStatus() {
     try {
       await switchToArcNetwork();
     } catch (error) {
-      setNetworkError(error instanceof Error ? error.message : "Unable to switch to X Layer.");
-      throw error;
+      setNetworkError(errorMessage(error, "Unable to switch to X Layer."));
     } finally {
       setBusy("idle");
     }

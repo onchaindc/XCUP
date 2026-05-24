@@ -3,11 +3,11 @@
 import { motion } from "framer-motion";
 import { AlertCircle, ArrowRight, CalendarClock, CheckCircle2, Radio, RefreshCw, Trophy } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { isAddress, keccak256, parseEther, toBytes } from "viem";
-import { useAccount, useConnect, useDisconnect, useWriteContract } from "wagmi";
-import type { LiveSportEvent } from "@/lib/sports";
+import { formatUnits, isAddress, keccak256, parseEther, toBytes } from "viem";
+import { useAccount, useBalance, useConnect, useDisconnect, useWriteContract } from "wagmi";
+import { formatLiveEventMatchup, type LiveSportEvent } from "@/lib/sports";
 import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
-import { shortAddress } from "@/lib/utils";
+import { errorMessage } from "@/lib/utils";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
 type Slip = {
@@ -49,13 +49,32 @@ export function MarketsPage() {
   const [error, setError] = useState("");
   const [sportFilter, setSportFilter] = useState("All");
   const [slip, setSlip] = useState<Slip | null>(null);
-  const [tickets, setTickets] = useState<PredictionTicket[]>([]);
-  const [ticketsHydrated, setTicketsHydrated] = useState(false);
+  const ticketsHydratedRef = useRef(false);
+  const [tickets, setTickets] = useState<PredictionTicket[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+    const stored = window.localStorage.getItem("xcup-prediction-tickets");
+    if (!stored) {
+      return [];
+    }
+    try {
+      return JSON.parse(stored) as PredictionTicket[];
+    } catch {
+      return [];
+    }
+  });
   const [showLoader, setShowLoader] = useState(true);
   const { address, isConnected } = useAccount();
+  const { data: balance } = useBalance({
+    address,
+    chainId: xLayerTestnet.id,
+    query: { enabled: Boolean(address) }
+  });
   const { connectors, connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const hydratedRef = useRef(false);
+  const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowLoader(false), 1000);
@@ -63,22 +82,12 @@ export function MarketsPage() {
   }, []);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem("xcup-prediction-tickets");
-    if (stored) {
-      try {
-        setTickets(JSON.parse(stored) as PredictionTicket[]);
-      } catch {
-        setTickets([]);
-      }
+    if (!ticketsHydratedRef.current) {
+      ticketsHydratedRef.current = true;
+      return;
     }
-    setTicketsHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (ticketsHydrated) {
-      window.localStorage.setItem("xcup-prediction-tickets", JSON.stringify(tickets));
-    }
-  }, [tickets, ticketsHydrated]);
+    window.localStorage.setItem("xcup-prediction-tickets", JSON.stringify(tickets));
+  }, [tickets]);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,9 +140,15 @@ export function MarketsPage() {
   async function connectWallet() {
     const connector = connectors[0];
     if (!connector) {
+      setError("No wallet connector detected.");
       return;
     }
-    await connectAsync({ connector, chainId: xLayerTestnet.id });
+    setError("");
+    try {
+      await connectAsync({ connector, chainId: xLayerTestnet.id });
+    } catch (connectError) {
+      setError(errorMessage(connectError, "Wallet connection failed."));
+    }
   }
 
   return (
@@ -144,7 +159,7 @@ export function MarketsPage() {
           address={address}
           isConnected={isConnected}
           isPending={isPending}
-          balance={isConnected ? shortAddress(address) : "0.0000 OKB"}
+          balance={formattedBalance}
           onConnect={() => void connectWallet()}
           onDisconnect={() => disconnect()}
         />
@@ -224,7 +239,7 @@ function MarketEventCard({ event, onPick }: { event: LiveSportEvent; onPick: (pi
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">{event.sport} - {event.league}</p>
-          <h2 className="mt-2 text-2xl font-black text-white">{event.shortName}</h2>
+          <h2 className="mt-2 text-2xl font-black text-white">{formatLiveEventMatchup(event)}</h2>
           <p className="mt-2 flex items-center gap-2 text-sm text-white/58">
             <CalendarClock size={15} aria-hidden="true" />
             {event.status.detail}
@@ -274,12 +289,9 @@ function PredictionSlip({
   tickets: PredictionTicket[];
   setTickets: (tickets: PredictionTicket[]) => void;
 }) {
-  const [confirmed, setConfirmed] = useState("");
   const { writeContractAsync, isPending } = useWriteContract();
-
-  useEffect(() => {
-    setConfirmed("");
-  }, [slip]);
+  const confirmedKey = slip ? `${slip.event.id}:${slip.pick}:${slip.amount}` : "";
+  const [confirmedState, setConfirmedState] = useState<{ key: string; message: string } | null>(null);
 
   if (!slip) {
     return (
@@ -297,7 +309,7 @@ function PredictionSlip({
 
     const ticket: PredictionTicket = {
       id: crypto.randomUUID(),
-      eventName: slip.event.shortName,
+      eventName: formatLiveEventMatchup(slip.event),
       pick: slip.pick,
       amount: slip.amount,
       createdAt: new Intl.DateTimeFormat("en-US", {
@@ -307,11 +319,11 @@ function PredictionSlip({
     };
 
     if (arenaAddress) {
-      setConfirmed("Confirm the prediction in your wallet.");
+      setConfirmedState({ key: confirmedKey, message: "Confirm the prediction in your wallet." });
       try {
         const payloadHash = keccak256(toBytes(JSON.stringify({
           eventId: slip.event.id,
-          eventName: slip.event.shortName,
+          eventName: formatLiveEventMatchup(slip.event),
           pick: slip.pick,
           amount: slip.amount,
           createdAt: ticket.createdAt
@@ -329,13 +341,13 @@ function PredictionSlip({
           chainId: xLayerTestnet.id
         });
         ticket.txHash = txHash;
-        setConfirmed("Prediction submitted on X Layer testnet.");
+        setConfirmedState({ key: confirmedKey, message: "Prediction submitted on X Layer testnet." });
       } catch (error) {
-        setConfirmed(error instanceof Error ? error.message : "Prediction was not submitted.");
+        setConfirmedState({ key: confirmedKey, message: errorMessage(error, "Prediction was not submitted.") });
         return;
       }
     } else {
-      setConfirmed("Prediction locked for this live board session.");
+      setConfirmedState({ key: confirmedKey, message: "Prediction locked for this live board session." });
     }
 
     setTickets([ticket, ...tickets].slice(0, 5));
@@ -345,7 +357,7 @@ function PredictionSlip({
     <div className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Prediction Slip</p>
       <h2 className="mt-2 text-xl font-black text-white">{slip.pick}</h2>
-      <p className="mt-2 text-sm text-white/58">{slip.event.shortName} - {slip.event.league}</p>
+      <p className="mt-2 text-sm text-white/58">{formatLiveEventMatchup(slip.event)} - {slip.event.league}</p>
       <label className="mt-4 grid gap-2 text-sm font-bold text-white/58">
         Stake amount
         <input className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-base font-black text-white outline-none focus:border-[#18e3bd]/60" value={slip.amount} onChange={(event) => setSlip({ ...slip, amount: event.target.value })} placeholder="0.00 OKB" />
@@ -359,7 +371,7 @@ function PredictionSlip({
         <CheckCircle2 size={16} aria-hidden="true" />
         {isPending ? "Confirming" : "Lock Prediction"}
       </button>
-      {confirmed ? <p className="mt-3 rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 p-3 text-sm font-bold text-[#80ffe2]">{confirmed}</p> : null}
+      {confirmedState && confirmedState.key === confirmedKey ? <p className="mt-3 rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 p-3 text-sm font-bold text-[#80ffe2]">{confirmedState.message}</p> : null}
       {!isConnected ? <p className="mt-3 text-xs font-bold text-white/44">Connect wallet to lock a prediction.</p> : null}
       <button className="mt-3 flex items-center gap-2 text-xs font-black text-white/44 transition hover:text-white" type="button" onClick={() => setSlip(null)}>
         Clear slip

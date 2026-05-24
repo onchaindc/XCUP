@@ -26,6 +26,7 @@ const newsFeeds = [
   "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news",
   "https://site.api.espn.com/apis/site/v2/sports/cricket/news"
 ];
+const NEWS_TIMEOUT_MS = 3500;
 
 const footballTerms = [
   "world cup",
@@ -39,12 +40,34 @@ const footballTerms = [
   "soccer"
 ];
 
+async function fetchNewsPayload(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), NEWS_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      next: { revalidate: 180 },
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as EspnNews;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchNews(url: string) {
-  const response = await fetch(url, { next: { revalidate: 180 } });
-  if (!response.ok) {
+  const data = await fetchNewsPayload(url);
+  if (!data) {
     return [];
   }
-  const data = (await response.json()) as EspnNews;
+
   return (data.articles ?? []).map<SportsNewsItem>((article, index) => ({
     id: String(article.id ?? `${url}-${index}`),
     title: article.headline ?? "Sports headline",

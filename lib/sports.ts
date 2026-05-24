@@ -49,3 +49,14 @@ export type SportsNewsResponse = {
   generatedAt: string;
   items: SportsNewsItem[];
 };
+
+export function formatLiveEventMatchup(event: Pick<LiveSportEvent, "awayTeam" | "homeTeam" | "shortName">) {
+  const away = event.awayTeam.shortName || event.awayTeam.name;
+  const home = event.homeTeam.shortName || event.homeTeam.name;
+
+  if (away && home && away !== "TBD" && home !== "TBD") {
+    return `${away} VS ${home}`;
+  }
+
+  return event.shortName.replace(/\s+@\s+|\s+at\s+/gi, " VS ");
+}

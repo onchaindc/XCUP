@@ -17,7 +17,7 @@ if (walletConnectProjectId) {
       projectId: walletConnectProjectId,
       showQrModal: true,
       metadata: {
-        name: "X Cup Edition",
+        name: "X Cup Arena",
         description: "World Cup app on X Layer",
         url: "https://xcup.example",
         icons: ["https://xcup.example/icon.png"]
@@ -39,7 +39,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );

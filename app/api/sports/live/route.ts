@@ -31,6 +31,7 @@ const feeds = [
 ];
 
 const priorityClubs = ["real madrid", "barcelona", "arsenal", "manchester city", "madrid", "barca", "city"];
+const FEED_TIMEOUT_MS = 3500;
 
 type EspnTeam = {
   id?: string;
@@ -82,6 +83,14 @@ function teamFrom(competitor?: EspnTeam) {
   };
 }
 
+function matchupName(away: ReturnType<typeof teamFrom>, home: ReturnType<typeof teamFrom>) {
+  return `${away.shortName} VS ${home.shortName}`;
+}
+
+function normalizeMatchupText(value: string) {
+  return value.replace(/\s+@\s+|\s+at\s+/gi, " VS ");
+}
+
 function normalizeEvent(event: EspnEvent, feed: (typeof feeds)[number]): LiveSportEvent | null {
   const competitors = event.competitions?.[0]?.competitors ?? [];
   const home = competitors.find((item) => item.homeAway === "home") ?? competitors[0];
@@ -90,17 +99,19 @@ function normalizeEvent(event: EspnEvent, feed: (typeof feeds)[number]): LiveSpo
     return null;
   }
 
+  const homeTeam = teamFrom(home);
+  const awayTeam = teamFrom(away);
   const state = event.status?.type?.state ?? "unknown";
   const liveBoost = state === "in" ? 20 : 0;
-  const text = `${event.name ?? ""} ${event.shortName ?? ""} ${teamFrom(home).name} ${teamFrom(away).name}`.toLowerCase();
+  const text = `${event.name ?? ""} ${event.shortName ?? ""} ${homeTeam.name} ${awayTeam.name}`.toLowerCase();
   const clubBoost = priorityClubs.reduce((boost, club) => boost + (text.includes(club) ? 10 : 0), 0);
   return {
     id: `${feed.slug}:${event.id}`,
     sport: feed.sport,
     league: feed.league,
     priority: feed.priority + liveBoost + clubBoost,
-    name: event.name ?? `${teamFrom(away).name} at ${teamFrom(home).name}`,
-    shortName: event.shortName ?? `${teamFrom(away).shortName} @ ${teamFrom(home).shortName}`,
+    name: normalizeMatchupText(event.name ?? `${awayTeam.name} VS ${homeTeam.name}`),
+    shortName: normalizeMatchupText(event.shortName ?? matchupName(awayTeam, homeTeam)),
     date: event.date ?? new Date().toISOString(),
     status: {
       state,
@@ -108,20 +119,40 @@ function normalizeEvent(event: EspnEvent, feed: (typeof feeds)[number]): LiveSpo
       clock: event.status?.displayClock ?? ""
     },
     venue: event.venue?.displayName,
-    homeTeam: teamFrom(home),
-    awayTeam: teamFrom(away),
+    homeTeam,
+    awayTeam,
     link: event.links?.find((link) => link.href)?.href
   };
 }
 
+async function fetchScoreboard(feed: (typeof feeds)[number]) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FEED_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${feed.slug}/scoreboard`, {
+      next: { revalidate: 45 },
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as EspnScoreboard;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchFeed(feed: (typeof feeds)[number]) {
-  const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${feed.slug}/scoreboard`, {
-    next: { revalidate: 45 }
-  });
-  if (!response.ok) {
+  const data = await fetchScoreboard(feed);
+  if (!data) {
     return [];
   }
-  const data = (await response.json()) as EspnScoreboard;
+
   return (data.events ?? [])
     .map((event) => normalizeEvent(event, feed))
     .filter((event): event is LiveSportEvent => Boolean(event));

@@ -3,10 +3,11 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, CircleDot, Goal, Shield, Shirt, Trophy, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { formatUnits } from "viem";
+import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
 import type { LiveSportEvent } from "@/lib/sports";
 import { xLayerTestnet } from "@/lib/arc";
-import { shortAddress } from "@/lib/utils";
+import { errorMessage } from "@/lib/utils";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
 type PlayerPick = {
@@ -26,9 +27,16 @@ export function GameFiPage() {
   const [keeperPick, setKeeperPick] = useState<(typeof penaltyTargets)[number] | null>(null);
   const [penaltyResult, setPenaltyResult] = useState("");
   const [lineupStatus, setLineupStatus] = useState("");
+  const [walletError, setWalletError] = useState("");
   const { address, isConnected } = useAccount();
+  const { data: balance } = useBalance({
+    address,
+    chainId: xLayerTestnet.id,
+    query: { enabled: Boolean(address) }
+  });
   const { connectors, connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
+  const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowLoader(false), 1200);
@@ -65,9 +73,15 @@ export function GameFiPage() {
   async function connectWallet() {
     const connector = connectors[0];
     if (!connector) {
+      setWalletError("No wallet connector detected.");
       return;
     }
-    await connectAsync({ connector, chainId: xLayerTestnet.id });
+    setWalletError("");
+    try {
+      await connectAsync({ connector, chainId: xLayerTestnet.id });
+    } catch (error) {
+      setWalletError(errorMessage(error, "Wallet connection failed."));
+    }
   }
 
   function togglePlayer(player: PlayerPick) {
@@ -101,10 +115,11 @@ export function GameFiPage() {
           address={address}
           isConnected={isConnected}
           isPending={isPending}
-          balance={isConnected ? shortAddress(address) : "0.0000 OKB"}
+          balance={formattedBalance}
           onConnect={() => void connectWallet()}
           onDisconnect={() => disconnect()}
         />
+        {walletError ? <p className="mb-4 rounded-lg border border-[#ff5c39]/25 bg-[#ff5c39]/10 px-4 py-3 text-sm font-bold text-[#ffb09d]">{walletError}</p> : null}
         <header className="rounded-lg border border-white/10 bg-white/[0.045] p-4 sm:p-5">
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">GameFi</p>
           <h1 className="mt-2 text-3xl font-black tracking-normal text-white sm:text-5xl">Play the matchday layer</h1>

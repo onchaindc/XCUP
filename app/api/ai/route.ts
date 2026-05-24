@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   const origin = request.nextUrl.origin;
 
   const systemPrompt = [
-    "You are X Cup Oracle, a wallet-aware World Cup agent inside X Cup Edition.",
+    "You are X Cup Oracle, a wallet-aware World Cup agent inside X Cup Arena.",
     "You must never claim that a transaction executed without a signed transaction hash.",
     "When the user asks to pay, swap, or invoice, prepare an action and ask for confirmation.",
     `Wallet context: ${JSON.stringify(context)}.`

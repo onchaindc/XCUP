@@ -1,13 +1,13 @@
-# SquadX
+# X Cup Arena
 
-SquadX is an AI-powered onchain football prediction and squad warfare platform for X Layer. It turns World Cup fandom into squad strategy economies: users form squads, make live predictions, earn reputation, fund treasuries, and climb global leaderboards.
+X Cup Arena is a World Cup-themed onchain arena for X Layer. It combines live prediction markets, matchday GameFi, squads, NFT/proof rails, and AI match agents into one mobile-first product.
 
 ## What it does
 
 - live-only prediction cards for real in-play sports events
-- SquadX SocialFi hub with squad roles, ELO, treasury, wars, territory, and reputation loops
+- dedicated squads tab with create/join flows, roles, ELO, treasury, wars, territory, and reputation loops
 - mini GameFi loops for fantasy lineup selection and penalty duels
-- AI analyst panel for tactical squad strategy and risk guidance
+- dedicated AI Agent tab for tactical signal, risk, and settlement briefings
 - optional X Layer testnet prediction writes when `NEXT_PUBLIC_XCUP_ARENA_ADDRESS` is configured
 
 ## X Layer
