@@ -19,12 +19,25 @@ export function getEthereumProvider() {
   return window.ethereum ?? null;
 }
 
-export async function addArcNetwork() {
-  const provider = getEthereumProvider();
-  if (!provider) {
+function resolveProvider(provider?: EthereumProvider | null) {
+  return provider ?? getEthereumProvider();
+}
+
+export function isUnknownChainError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    Number((error as { code: unknown }).code) === 4902
+  );
+}
+
+export async function addArcNetwork(provider?: EthereumProvider | null) {
+  const walletProvider = resolveProvider(provider);
+  if (!walletProvider) {
     throw new Error("No EVM wallet provider was found.");
   }
-  await provider.request({
+  await walletProvider.request({
     method: "wallet_addEthereumChain",
     params: [
       {
@@ -38,13 +51,15 @@ export async function addArcNetwork() {
   });
 }
 
-export async function switchToArcNetwork() {
-  const provider = getEthereumProvider();
-  if (!provider) {
+export async function switchToArcNetwork(provider?: EthereumProvider | null) {
+  const walletProvider = resolveProvider(provider);
+  if (!walletProvider) {
     throw new Error("No EVM wallet provider was found.");
   }
-  await provider.request({
+  await walletProvider.request({
     method: "wallet_switchEthereumChain",
     params: [{ chainId: `0x${X_LAYER_MAINNET_CHAIN_ID.toString(16)}` }]
   });
 }
+
+export type { EthereumProvider };

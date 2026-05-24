@@ -264,6 +264,7 @@ export function TopHeader({
         </div>
       </div>
       {network.networkError ? <p className="mt-2 rounded-lg border border-[#ff5c39]/25 bg-[#ff5c39]/10 px-3 py-2 text-xs font-bold text-[#ffb09d]">{network.networkError}</p> : null}
+      {network.networkNotice ? <p className="mt-2 rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 px-3 py-2 text-xs font-bold text-[#80ffe2]">{network.networkNotice}</p> : null}
       <nav className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 sm:grid-cols-6 xl:hidden">
         {topNav.map((item) => (
           <Link key={item.label} className="flex min-h-10 items-center justify-center gap-1 rounded-md px-1 text-[11px] font-black text-white/62 transition hover:bg-white/10 hover:text-white" href={item.href}>
