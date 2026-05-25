@@ -63,6 +63,7 @@ function formatAmount(units: string, asset: ArenaAsset) {
 export function ArenaPage() {
   const [showLoader, setShowLoader] = useState(true);
   const [matches, setMatches] = useState<ArenaMatch[]>([]);
+  const [matchSource, setMatchSource] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<ArenaMatch | null>(null);
@@ -162,8 +163,9 @@ export function ArenaPage() {
       if (!response.ok) {
         throw new Error("Arena schedule unavailable.");
       }
-      const data = (await response.json()) as { matches: ArenaMatch[] };
+      const data = (await response.json()) as { matches: ArenaMatch[]; source?: string };
       setMatches(data.matches);
+      setMatchSource(data.source ?? "");
     } catch (error) {
       setToast(errorMessage(error, "Unable to load arena matches."));
     } finally {
@@ -297,6 +299,11 @@ export function ArenaPage() {
               </Button>
             </div>
             <section className="grid gap-3 md:grid-cols-2">
+              {matchSource === "mock" ? (
+                <Card className="border-[#f5a524]/20 bg-[#f5a524]/10 p-4 text-sm font-bold text-[#ffd88a] md:col-span-2">
+                  Demo schedule shown because no live provider fixtures are available.
+                </Card>
+              ) : null}
               {loading ? <SkeletonCards /> : null}
               {!loading && visibleMatches.map((match) => <MatchCard key={match.id} match={match} onEnter={() => setSelectedMatch(match)} />)}
               {!loading && !visibleMatches.length ? (

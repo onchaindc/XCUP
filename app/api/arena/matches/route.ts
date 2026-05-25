@@ -77,7 +77,8 @@ export async function GET(request: NextRequest) {
   const origin = request.nextUrl.origin;
   const providerMatches = await fetchProviderMatches();
   const footballMatches = await fetchEspnFootball(origin);
-  const merged = [...providerMatches, ...footballMatches, ...mockArenaMatches];
+  const liveProviderMatches = [...providerMatches, ...footballMatches];
+  const merged = liveProviderMatches.length ? liveProviderMatches : mockArenaMatches;
   const seen = new Set<string>();
   const twoDays = Date.now() + 2 * 24 * 60 * 60 * 1000;
   const matches = merged
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
-    source: process.env.API_SPORTS_KEY || process.env.SPORTSMONK_KEY ? "provider+espn+mock" : "espn+mock",
+    source: liveProviderMatches.length ? "provider" : "mock",
     matches
   });
 }
