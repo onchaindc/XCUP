@@ -7,6 +7,8 @@ export const revalidate = 45;
 const feeds = [
   { sport: "Football", league: "FIFA World Cup", slug: "soccer/fifa.world", priority: 140 },
   { sport: "Football", league: "FIFA Club World Cup", slug: "soccer/fifa.cwc", priority: 132 },
+  { sport: "Football", league: "International Friendlies", slug: "soccer/fifa.friendly", priority: 130 },
+  { sport: "Football", league: "UEFA European Championship", slug: "soccer/uefa.euro", priority: 128 },
   { sport: "Football", league: "UEFA Champions League", slug: "soccer/uefa.champions", priority: 126 },
   { sport: "Football", league: "Premier League", slug: "soccer/eng.1", priority: 122 },
   { sport: "Football", league: "LaLiga", slug: "soccer/esp.1", priority: 116 },
@@ -33,6 +35,7 @@ const feeds = [
 
 const priorityClubs = ["real madrid", "barcelona", "arsenal", "manchester city", "madrid", "barca", "city", "ajax"];
 const FEED_TIMEOUT_MS = 3500;
+const SCHEDULE_DAYS = 2;
 
 type EspnTeam = {
   id?: string;
@@ -127,12 +130,20 @@ function normalizeEvent(event: EspnEvent, feed: (typeof feeds)[number]): LiveSpo
   };
 }
 
-async function fetchScoreboard(feed: (typeof feeds)[number]) {
+function espnDateRange() {
+  const start = new Date();
+  const end = new Date(start.getTime() + SCHEDULE_DAYS * 24 * 60 * 60 * 1000);
+  const format = (date: Date) =>
+    `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, "0")}${String(date.getUTCDate()).padStart(2, "0")}`;
+  return `${format(start)}-${format(end)}`;
+}
+
+async function fetchScoreboard(feed: (typeof feeds)[number], dates: string) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FEED_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${feed.slug}/scoreboard`, {
+    const response = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${feed.slug}/scoreboard?dates=${dates}&limit=100`, {
       next: { revalidate: 45 },
       signal: controller.signal
     });
@@ -149,8 +160,8 @@ async function fetchScoreboard(feed: (typeof feeds)[number]) {
   }
 }
 
-async function fetchFeed(feed: (typeof feeds)[number]) {
-  const data = await fetchScoreboard(feed);
+async function fetchFeed(feed: (typeof feeds)[number], dates: string) {
+  const data = await fetchScoreboard(feed, dates);
   if (!data) {
     return [];
   }
@@ -161,10 +172,11 @@ async function fetchFeed(feed: (typeof feeds)[number]) {
 }
 
 export async function GET() {
-  const settled = await Promise.allSettled(feeds.map(fetchFeed));
+  const dates = espnDateRange();
+  const settled = await Promise.allSettled(feeds.map((feed) => fetchFeed(feed, dates)));
   const seen = new Set<string>();
   const now = Date.now();
-  const soon = now + 72 * 60 * 60 * 1000;
+  const soon = now + SCHEDULE_DAYS * 24 * 60 * 60 * 1000;
   const events = settled
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter((event) => {

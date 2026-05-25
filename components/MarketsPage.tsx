@@ -172,7 +172,7 @@ export function MarketsPage() {
                   <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Markets</p>
                   <h1 className="mt-2 text-3xl font-black tracking-normal text-white sm:text-5xl">Live sports board</h1>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">
-                    Real events from live sports feeds. Prediction buttons only appear for matches and games that are live right now.
+                    Real live and scheduled events from sports feeds across football, basketball, cricket, baseball, hockey, tennis, MMA, and international fixtures.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -204,8 +204,8 @@ export function MarketsPage() {
               {!loading && !error && !filteredEvents.length ? (
                 <div className="rounded-lg border border-white/10 bg-white/[0.045] p-6 text-center">
                   <AlertCircle className="mx-auto text-white/44" size={30} aria-hidden="true" />
-                  <p className="mt-3 font-black text-white">No matching live market right now.</p>
-                  <p className="mt-2 text-sm leading-6 text-white/58">No mock fixtures are shown. The board will open when the real live feed returns an in-play event.</p>
+                  <p className="mt-3 font-black text-white">No matching fixtures in the next 2 days.</p>
+                  <p className="mt-2 text-sm leading-6 text-white/58">Try another sport filter or refresh the board.</p>
                 </div>
               ) : null}
               {!loading && filteredEvents.map((event) => (
@@ -257,13 +257,13 @@ function MarketEventCard({ event, onPick }: { event: LiveSportEvent; onPick: (pi
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {[awayPick, homePick, event.sport === "Football" ? "Draw" : "OT / close finish"].map((pick) => (
-          <button key={pick} className="rounded-lg border border-white/10 bg-black/35 p-3 text-left transition hover:border-[#18e3bd]/35 hover:bg-[#18e3bd]/10 disabled:cursor-not-allowed disabled:opacity-45" type="button" onClick={() => onPick(pick)} disabled={!isLive}>
+          <button key={pick} className="rounded-lg border border-white/10 bg-black/35 p-3 text-left transition hover:border-[#18e3bd]/35 hover:bg-[#18e3bd]/10" type="button" onClick={() => onPick(pick)}>
             <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-white/42">Predict</span>
             <span className="mt-1 block text-sm font-black text-white">{pick}</span>
           </button>
         ))}
       </div>
-      {!isLive ? <p className="mt-3 text-xs font-bold text-white/42">Predictions open when this event is live.</p> : null}
+      {!isLive ? <p className="mt-3 text-xs font-bold text-white/42">Scheduled fixture. Picks can be staged before kickoff.</p> : null}
     </motion.article>
   );
 }
@@ -299,7 +299,7 @@ function PredictionSlip({
     return (
       <div className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
         <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Prediction Slip</p>
-        <p className="mt-3 text-sm leading-6 text-white/60">Select a live prediction to open the slip. Nothing appears here from mock fixtures.</p>
+        <p className="mt-3 text-sm leading-6 text-white/60">Select a fixture prediction to open the slip.</p>
       </div>
     );
   }
