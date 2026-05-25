@@ -32,7 +32,7 @@ import { pickWalletConnector } from "@/lib/wallet";
 
 const topNav = [
   { label: "Matches", href: "/markets", icon: Radio },
-  { label: "Arena", href: "/", icon: Trophy },
+  { label: "Arena", href: "/arena", icon: Trophy },
   { label: "Markets", href: "/markets", icon: Activity },
   { label: "GameFi", href: "/gamefi", icon: Gamepad2 },
   { label: "Squads", href: "/squads", icon: Users },
