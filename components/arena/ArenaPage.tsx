@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 import { Activity, ArrowRight, CheckCircle2, Coins, Flame, Medal, RefreshCw, ShieldCheck, Trophy, Wallet, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { formatUnits, keccak256, parseUnits, toBytes } from "viem";
-import { useAccount, useBalance, useConnect, useDisconnect, useReadContract, useWriteContract } from "wagmi";
-import { arenaChallengeAbi, arenaChallengeAddress, ARENA_ASSET_DECIMALS, ARENA_ASSET_ID, ARENA_OUTCOME_ID } from "@/lib/arena/contracts";
+import { formatUnits, keccak256, parseEventLogs, parseUnits, toBytes } from "viem";
+import { useAccount, useBalance, useConnect, useDisconnect, usePublicClient, useReadContract, useWriteContract } from "wagmi";
+import { arenaChallengeAbi, arenaChallengeAddress, ARENA_ASSET_DECIMALS, ARENA_ASSET_ID, ARENA_OUTCOME_ID, erc20Abi, usdcAddress } from "@/lib/arena/contracts";
 import type { ArenaAsset, ArenaConfidence, ArenaMatch, ArenaOutcome, ArenaSlip, ArenaStats, ArenaSport } from "@/lib/arena/types";
 import { X_LAYER_EXPLORER_URL, xLayerMainnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
@@ -60,6 +60,11 @@ function formatAmount(units: string, asset: ArenaAsset) {
   }
 }
 
+function displayError(error: unknown, fallback: string) {
+  const message = errorMessage(error, fallback);
+  return /user rejected|rejected the request|denied|declined|4001/i.test(message) ? "Transaction declined." : fallback;
+}
+
 export function ArenaPage() {
   const [showLoader, setShowLoader] = useState(true);
   const [matches, setMatches] = useState<ArenaMatch[]>([]);
@@ -76,12 +81,28 @@ export function ArenaPage() {
   const { connectors, connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
+  const publicClient = usePublicClient({ chainId: xLayerMainnet.id });
   const challengeAddress = arenaChallengeAddress();
+  const configuredUsdc = usdcAddress();
   const { data: balance } = useBalance({ address, chainId: xLayerMainnet.id, query: { enabled: Boolean(address) } });
   const { data: vaultBalance } = useReadContract({
     address: challengeAddress,
     abi: arenaChallengeAbi,
     functionName: "vaultBalance",
+    chainId: xLayerMainnet.id,
+    query: { enabled: Boolean(challengeAddress) }
+  });
+  const { data: usdcVaultBalance } = useReadContract({
+    address: challengeAddress,
+    abi: arenaChallengeAbi,
+    functionName: "usdcVaultBalance",
+    chainId: xLayerMainnet.id,
+    query: { enabled: Boolean(challengeAddress) }
+  });
+  const { data: vaultOwner } = useReadContract({
+    address: challengeAddress,
+    abi: arenaChallengeAbi,
+    functionName: "owner",
     chainId: xLayerMainnet.id,
     query: { enabled: Boolean(challengeAddress) }
   });
@@ -95,7 +116,7 @@ export function ArenaPage() {
   });
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
   const visibleMatches = matches.filter((match) => sport === "All" || match.sport === sport);
-  const activeSlips = slips.filter((slip) => slip.status === "PENDING" || slip.status === "LOCKED");
+  const isVaultOwner = Boolean(address && vaultOwner && address.toLowerCase() === vaultOwner.toLowerCase());
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowLoader(false), 800);
@@ -167,7 +188,7 @@ export function ArenaPage() {
       setMatches(data.matches);
       setMatchSource(data.source ?? "");
     } catch (error) {
-      setToast(errorMessage(error, "Unable to load arena matches."));
+      setToast(displayError(error, "Unable to load arena matches."));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -183,7 +204,7 @@ export function ArenaPage() {
     try {
       await connectAsync({ connector, chainId: xLayerMainnet.id });
     } catch (error) {
-      setToast(errorMessage(error, "Wallet connection failed."));
+      setToast(displayError(error, "Wallet connection failed."));
     }
   }
 
@@ -196,7 +217,11 @@ export function ArenaPage() {
     asset: ArenaAsset;
   }) {
     if (!challengeAddress) {
-      setToast("Configure NEXT_PUBLIC_XCUP_ARENA_ADDRESS before locking challenges.");
+      setToast("Configure NEXT_PUBLIC_XCUP_CHALLENGE_VAULT_ADDRESS before locking challenges.");
+      return;
+    }
+    if (input.asset === "USDC" && !configuredUsdc) {
+      setToast("Configure NEXT_PUBLIC_X_LAYER_USDC_ADDRESS before using USDC.");
       return;
     }
     const amountUnits = parseUnits(input.amount, ARENA_ASSET_DECIMALS[input.asset]);
@@ -218,6 +243,18 @@ export function ArenaPage() {
     setStats((current) => ({ ...current, totalChallenges: current.totalChallenges + 1 }));
     setToast("Challenge pending. Confirm in your wallet.");
     try {
+      if (input.asset === "USDC" && configuredUsdc) {
+        setToast("Approve USDC spend in your wallet.");
+        const approvalHash = await writeContractAsync({
+          address: configuredUsdc,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [challengeAddress, amountUnits],
+          chainId: xLayerMainnet.id
+        });
+        await publicClient?.waitForTransactionReceipt({ hash: approvalHash });
+        setToast("USDC approved. Confirm challenge lock.");
+      }
       const txHash = await writeContractAsync({
         address: challengeAddress,
         abi: arenaChallengeAbi,
@@ -226,13 +263,22 @@ export function ArenaPage() {
         value: input.asset === "OKB" ? amountUnits : BigInt(0),
         chainId: xLayerMainnet.id
       });
-      setSlips((current) => current.map((slip) => (slip.id === localSlip.id ? { ...slip, status: "LOCKED", txHash } : slip)));
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash: txHash });
+      const created = receipt
+        ? parseEventLogs({
+            abi: arenaChallengeAbi,
+            logs: receipt.logs,
+            eventName: "ChallengeCreated"
+          })[0]
+        : undefined;
+      const chainSlipId = created?.args.slipId?.toString();
+      setSlips((current) => current.map((slip) => (slip.id === localSlip.id ? { ...slip, chainSlipId, status: "LOCKED", txHash } : slip)));
       setToast("Challenge locked on X Layer mainnet.");
       setSelectedMatch(null);
     } catch (error) {
       setSlips((current) => current.filter((slip) => slip.id !== localSlip.id));
       setStats((current) => ({ ...current, totalChallenges: Math.max(0, current.totalChallenges - 1) }));
-      setToast(errorMessage(error, "Challenge was not locked."));
+      setToast(displayError(error, "Challenge was not locked."));
     }
   }
 
@@ -241,18 +287,22 @@ export function ArenaPage() {
       setToast("Configure the arena contract address first.");
       return;
     }
+    if (!slip.chainSlipId) {
+      setToast("Challenge is still indexing. Try again in a moment.");
+      return;
+    }
     try {
       const txHash = await writeContractAsync({
         address: challengeAddress,
         abi: arenaChallengeAbi,
         functionName: "exitChallenge",
-        args: [BigInt(`0x${slip.id.replaceAll("-", "").slice(0, 12)}`)],
+        args: [BigInt(slip.chainSlipId)],
         chainId: xLayerMainnet.id
       });
       setSlips((current) => current.map((item) => (item.id === slip.id ? { ...item, status: "EXITED", txHash } : item)));
-      setToast("Challenge exited.");
+      setToast("Collateral withdrawal submitted.");
     } catch (error) {
-      setToast(errorMessage(error, "Exit failed."));
+      setToast(displayError(error, "Withdrawal failed."));
     }
   }
 
@@ -261,18 +311,83 @@ export function ArenaPage() {
       setToast("Configure the arena contract address first.");
       return;
     }
+    if (!slip.chainSlipId) {
+      setToast("Challenge is still indexing. Try again in a moment.");
+      return;
+    }
     try {
       await writeContractAsync({
         address: challengeAddress,
         abi: arenaChallengeAbi,
         functionName: "claimReward",
-        args: [BigInt(`0x${slip.id.replaceAll("-", "").slice(0, 12)}`)],
+        args: [BigInt(slip.chainSlipId)],
         chainId: xLayerMainnet.id
       });
       setSlips((current) => current.map((item) => (item.id === slip.id ? { ...item, rewardClaimed: true } : item)));
       setToast("Reward claim submitted.");
     } catch (error) {
-      setToast(errorMessage(error, "Reward claim failed."));
+      setToast(displayError(error, "Reward claim failed."));
+    }
+  }
+
+  async function fundVault(amount: string, asset: ArenaAsset) {
+    if (!challengeAddress) {
+      setToast("Configure the vault address first.");
+      return;
+    }
+    if (asset === "USDC" && !configuredUsdc) {
+      setToast("Configure NEXT_PUBLIC_X_LAYER_USDC_ADDRESS before funding USDC.");
+      return;
+    }
+    try {
+      const amountUnits = parseUnits(amount, ARENA_ASSET_DECIMALS[asset]);
+      if (asset === "USDC" && configuredUsdc) {
+        const approvalHash = await writeContractAsync({
+          address: configuredUsdc,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [challengeAddress, amountUnits],
+          chainId: xLayerMainnet.id
+        });
+        await publicClient?.waitForTransactionReceipt({ hash: approvalHash });
+        await writeContractAsync({
+          address: challengeAddress,
+          abi: arenaChallengeAbi,
+          functionName: "fundVaultUSDC",
+          args: [amountUnits],
+          chainId: xLayerMainnet.id
+        });
+      } else {
+        await writeContractAsync({
+          address: challengeAddress,
+          abi: arenaChallengeAbi,
+          functionName: "fundVault",
+          value: amountUnits,
+          chainId: xLayerMainnet.id
+        });
+      }
+      setToast("Vault funding submitted.");
+    } catch (error) {
+      setToast(displayError(error, "Vault funding failed."));
+    }
+  }
+
+  async function withdrawVault(amount: string, asset: ArenaAsset) {
+    if (!challengeAddress || !address) {
+      setToast("Connect the owner wallet first.");
+      return;
+    }
+    try {
+      await writeContractAsync({
+        address: challengeAddress,
+        abi: arenaChallengeAbi,
+        functionName: "withdrawVault",
+        args: [ARENA_ASSET_ID[asset], parseUnits(amount, ARENA_ASSET_DECIMALS[asset]), address],
+        chainId: xLayerMainnet.id
+      });
+      setToast("Vault withdrawal submitted.");
+    } catch (error) {
+      setToast(displayError(error, "Vault withdrawal failed."));
     }
   }
 
@@ -282,7 +397,7 @@ export function ArenaPage() {
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[92rem] flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-8">
         <TopHeader address={address} isConnected={isConnected} isPending={isPending} balance={formattedBalance} onConnect={() => void connectWallet()} onDisconnect={() => disconnect()} />
         {toast ? <Toast message={toast} onClose={() => setToast("")} /> : null}
-        <ArenaHero stats={stats} vaultBalance={vaultBalance} />
+        <ArenaHero stats={stats} vaultBalance={vaultBalance} usdcVaultBalance={usdcVaultBalance} />
         <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
           <div className="grid gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3">
@@ -299,11 +414,6 @@ export function ArenaPage() {
               </Button>
             </div>
             <section className="grid gap-3 md:grid-cols-2">
-              {matchSource === "mock" ? (
-                <Card className="border-[#f5a524]/20 bg-[#f5a524]/10 p-4 text-sm font-bold text-[#ffd88a] md:col-span-2">
-                  Demo schedule shown because no live provider fixtures are available.
-                </Card>
-              ) : null}
               {loading ? <SkeletonCards /> : null}
               {!loading && visibleMatches.map((match) => <MatchCard key={match.id} match={match} onEnter={() => setSelectedMatch(match)} />)}
               {!loading && !visibleMatches.length ? (
@@ -316,6 +426,7 @@ export function ArenaPage() {
           </div>
           <aside className="grid content-start gap-4">
             <MySlips slips={slips} onExit={(slip) => void exitSlip(slip)} onClaim={(slip) => void claimSlip(slip)} busy={isWriting} />
+            {isVaultOwner ? <VaultAdminPanel busy={isWriting} onFund={(amount, asset) => void fundVault(amount, asset)} onWithdraw={(amount, asset) => void withdrawVault(amount, asset)} /> : null}
             <ArenaLeaderboard slips={slips} stats={stats} sport={sport} range={range} setRange={setRange} />
           </aside>
         </section>
@@ -327,7 +438,7 @@ export function ArenaPage() {
   );
 }
 
-function ArenaHero({ stats, vaultBalance }: { stats: ArenaStats; vaultBalance?: bigint }) {
+function ArenaHero({ stats, vaultBalance, usdcVaultBalance }: { stats: ArenaStats; vaultBalance?: bigint; usdcVaultBalance?: bigint }) {
   return (
     <section className="rounded-lg border border-white/10 bg-black p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -343,6 +454,7 @@ function ArenaHero({ stats, vaultBalance }: { stats: ArenaStats; vaultBalance?: 
           <Metric icon={Flame} label="Streak" value={String(stats.streak)} />
           <Metric icon={Activity} label="Total" value={String(stats.totalChallenges)} />
           <Metric icon={Coins} label="Vault" value={vaultBalance === undefined ? "Syncing" : `${Number(formatUnits(vaultBalance, 18)).toFixed(2)} OKB`} />
+          <Metric icon={ShieldCheck} label="USDC" value={usdcVaultBalance === undefined ? "Syncing" : `${Number(formatUnits(usdcVaultBalance, 6)).toFixed(2)}`} />
         </div>
       </div>
     </section>
@@ -476,7 +588,7 @@ function MySlips({ slips, busy, onExit, onClaim }: { slips: ArenaSlip[]; busy: b
             {slip.actualResult ? <p className="mt-2 text-xs text-white/60">Actual: {outcomeLabels[slip.actualResult]}</p> : null}
             {slip.txHash ? <a className="mt-2 inline-flex text-xs font-bold text-[#18e3bd]" href={`${X_LAYER_EXPLORER_URL}/tx/${slip.txHash}`} target="_blank" rel="noreferrer">View tx</a> : null}
             <div className="mt-3 flex gap-2">
-              {slip.status === "LOCKED" ? <Button size="sm" variant="secondary" disabled={busy} onClick={() => onExit(slip)}>Early Exit</Button> : null}
+              {slip.status === "LOCKED" ? <Button size="sm" variant="secondary" disabled={busy} onClick={() => onExit(slip)}>Withdraw to Wallet</Button> : null}
               {slip.status === "WON" && !slip.rewardClaimed ? <Button size="sm" disabled={busy} onClick={() => onClaim(slip)}>Claim Reward</Button> : null}
               {slip.rewardClaimed ? <span className="inline-flex items-center gap-1 text-xs font-bold text-gain"><CheckCircle2 size={14} />Reward claimed</span> : null}
             </div>
@@ -491,12 +603,7 @@ function MySlips({ slips, busy, onExit, onClaim }: { slips: ArenaSlip[]; busy: b
 function ArenaLeaderboard({ slips, stats, sport, range, setRange }: { slips: ArenaSlip[]; stats: ArenaStats; sport: "All" | ArenaSport; range: "Weekly" | "All-time"; setRange: (range: "Weekly" | "All-time") => void }) {
   const rows = useMemo(() => {
     const scoped = sport === "All" ? slips : slips.filter((slip) => slip.sport === sport);
-    return [
-      { name: "You", xp: stats.xp, streak: stats.streak, total: scoped.length },
-      { name: "0xArena7", xp: 220, streak: 5, total: 18 },
-      { name: "SignalDAO", xp: 180, streak: 3, total: 15 },
-      { name: "MatchReader", xp: 135, streak: 2, total: 11 }
-    ].sort((a, b) => b.xp - a.xp || b.streak - a.streak || b.total - a.total);
+    return stats.xp > 0 ? [{ name: "You", xp: stats.xp, streak: stats.streak, total: scoped.length }] : [];
   }, [slips, sport, stats]);
   return (
     <Card className="p-4">
@@ -517,6 +624,36 @@ function ArenaLeaderboard({ slips, stats, sport, range, setRange }: { slips: Are
             <span className="font-black text-[#18e3bd]">{row.xp} XP</span>
           </div>
         ))}
+        {!rows.length ? <p className="rounded-lg border border-white/10 bg-black/25 p-4 text-sm text-muted">Leaderboard opens after real users earn XP from resolved challenges.</p> : null}
+      </div>
+    </Card>
+  );
+}
+
+function VaultAdminPanel({ busy, onFund, onWithdraw }: { busy: boolean; onFund: (amount: string, asset: ArenaAsset) => void; onWithdraw: (amount: string, asset: ArenaAsset) => void }) {
+  const [fundAmount, setFundAmount] = useState("");
+  const [fundAsset, setFundAsset] = useState<ArenaAsset>("OKB");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [asset, setAsset] = useState<ArenaAsset>("OKB");
+  return (
+    <Card className="p-4">
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Vault Owner</p>
+      <p className="mt-2 text-sm leading-6 text-white/58">Fund rewards or withdraw vault liquidity with the owner wallet.</p>
+      <div className="mt-4 grid gap-2">
+        <select className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-white outline-none" value={fundAsset} onChange={(event) => setFundAsset(event.target.value as ArenaAsset)}>
+          <option className="bg-surface" value="OKB">OKB</option>
+          <option className="bg-surface" value="USDC">USDC</option>
+        </select>
+        <input className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-white outline-none" value={fundAmount} onChange={(event) => setFundAmount(event.target.value)} placeholder={`${fundAsset} amount to fund`} />
+        <Button disabled={busy || !Number(fundAmount)} onClick={() => onFund(fundAmount, fundAsset)}>Fund Vault</Button>
+      </div>
+      <div className="mt-4 grid gap-2">
+        <select className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-white outline-none" value={asset} onChange={(event) => setAsset(event.target.value as ArenaAsset)}>
+          <option className="bg-surface" value="OKB">OKB</option>
+          <option className="bg-surface" value="USDC">USDC</option>
+        </select>
+        <input className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-white outline-none" value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} placeholder={`${asset} amount to withdraw`} />
+        <Button variant="secondary" disabled={busy || !Number(withdrawAmount)} onClick={() => onWithdraw(withdrawAmount, asset)}>Withdraw to Owner Wallet</Button>
       </div>
     </Card>
   );

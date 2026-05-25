@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ArenaMatch, ArenaSport } from "@/lib/arena/types";
-import { mockArenaMatches } from "@/lib/arena/mock";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 45;
@@ -78,10 +77,9 @@ export async function GET(request: NextRequest) {
   const providerMatches = await fetchProviderMatches();
   const footballMatches = await fetchEspnFootball(origin);
   const liveProviderMatches = [...providerMatches, ...footballMatches];
-  const merged = liveProviderMatches.length ? liveProviderMatches : mockArenaMatches;
   const seen = new Set<string>();
   const twoDays = Date.now() + 2 * 24 * 60 * 60 * 1000;
-  const matches = merged
+  const matches = liveProviderMatches
     .filter((match) => {
       const time = new Date(match.startTime).getTime();
       return match.status === "live" || (time >= Date.now() - 30 * 60 * 1000 && time <= twoDays);
@@ -97,7 +95,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
-    source: liveProviderMatches.length ? "provider" : "mock",
+    source: liveProviderMatches.length ? "provider" : "empty",
     matches
   });
 }

@@ -19,6 +19,7 @@ export type ArenaMatch = {
 
 export type ArenaSlip = {
   id: string;
+  chainSlipId?: string;
   matchId: string;
   matchName: string;
   sport: ArenaSport;

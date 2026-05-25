@@ -158,20 +158,26 @@ function ProfileHero({
     <section className="overflow-hidden rounded-lg border border-white/10 bg-black">
       <input ref={avatarInputRef} className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] ? void uploadProfileImage(event.target.files[0], "avatarUrl") : undefined} />
       <input ref={bannerInputRef} className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] ? void uploadProfileImage(event.target.files[0], "bannerUrl") : undefined} />
-      <div className="relative min-h-44 border-b border-white/10 bg-[linear-gradient(135deg,rgba(24,227,189,0.22),rgba(66,165,255,0.08)),#05070d]">
-        {profile.bannerUrl ? <img className="absolute inset-0 h-full w-full object-cover opacity-75" src={profile.bannerUrl} alt="" /> : <div className="x-reference-grid absolute inset-0 opacity-50" />}
+      <div className="relative min-h-36 overflow-hidden border-b border-white/10 bg-black sm:min-h-40">
+        {profile.bannerUrl ? <img className="absolute inset-0 h-full w-full object-cover opacity-75" src={profile.bannerUrl} alt="" /> : null}
+        <div className="absolute inset-0 opacity-70">
+          <div className="x-reference-grid absolute inset-0 opacity-30" />
+          <div className="absolute -left-10 top-4 max-w-md text-6xl font-black leading-[0.82] tracking-normal text-white/10 sm:text-8xl" aria-hidden="true">focused_<br />verified_</div>
+          <div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle,rgba(255,255,255,0.20)_1px,transparent_1px)] [background-size:7px_7px] opacity-30" aria-hidden="true" />
+          <div className="absolute right-16 top-0 h-full w-28 -skew-x-12 bg-white/10" aria-hidden="true" />
+        </div>
         <button className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-lg border border-white/12 bg-black/45 text-white backdrop-blur-md transition hover:bg-white/12" type="button" onClick={() => bannerInputRef.current?.click()} aria-label="Upload banner">
           <Camera size={16} aria-hidden="true" />
         </button>
       </div>
-      <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_28rem]">
+      <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_25rem]">
         <div className="flex flex-wrap gap-4">
-          <button className="-mt-16 grid h-28 w-28 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/15 bg-[#090d14] text-white shadow-2xl" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Upload avatar">
+          <button className="-mt-14 grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/15 bg-[#090d14] text-white shadow-2xl sm:h-28 sm:w-28" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Upload avatar">
             {profile.avatarUrl ? <img className="h-full w-full object-cover" src={profile.avatarUrl} alt="" /> : <UserRound size={42} aria-hidden="true" />}
           </button>
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Competitor identity</p>
-            <h1 className="mt-1 text-3xl font-black text-white sm:text-5xl">{profile.displayName || "Unnamed manager"}</h1>
+            <h1 className="mt-1 text-3xl font-black leading-none text-white sm:text-5xl">{profile.displayName || "Unnamed manager"}</h1>
             <p className="mt-2 text-sm font-bold text-white/54">{profile.username || "@manager"} - {profile.squadAffiliation || "No squad yet"}</p>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62">{profile.bio || "Set a short status in settings."}</p>
           </div>

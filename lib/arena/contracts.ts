@@ -1,6 +1,5 @@
 import { isAddress } from "viem";
 
-// STUB ABI: replace this with the deployed challenge contract ABI if function signatures differ.
 export const ARENA_ASSET_DECIMALS = {
   OKB: 18,
   USDC: 6
@@ -18,7 +17,12 @@ export const ARENA_ASSET_ID = {
 } as const;
 
 export function arenaChallengeAddress() {
-  const configured = process.env.NEXT_PUBLIC_XCUP_ARENA_ADDRESS;
+  const configured = process.env.NEXT_PUBLIC_XCUP_CHALLENGE_VAULT_ADDRESS;
+  return configured && isAddress(configured) ? (configured as `0x${string}`) : undefined;
+}
+
+export function usdcAddress() {
+  const configured = process.env.NEXT_PUBLIC_X_LAYER_USDC_ADDRESS;
   return configured && isAddress(configured) ? (configured as `0x${string}`) : undefined;
 }
 
@@ -54,14 +58,43 @@ export const arenaChallengeAbi = [
     name: "getUserSlips",
     stateMutability: "view",
     inputs: [{ name: "user", type: "address" }],
-    outputs: [{ name: "slips", type: "bytes[]" }]
+    outputs: [
+      {
+        name: "slips",
+        type: "tuple[]",
+        components: [
+          { name: "id", type: "uint256" },
+          { name: "player", type: "address" },
+          { name: "matchId", type: "bytes32" },
+          { name: "outcome", type: "uint8" },
+          { name: "amount", type: "uint256" },
+          { name: "asset", type: "uint8" },
+          { name: "status", type: "uint8" },
+          { name: "createdAt", type: "uint64" },
+          { name: "lockDeadline", type: "uint64" },
+          { name: "rewardClaimed", type: "bool" }
+        ]
+      }
+    ]
   },
   {
     type: "function",
     name: "getMatchById",
     stateMutability: "view",
     inputs: [{ name: "matchId", type: "bytes32" }],
-    outputs: [{ name: "metadata", type: "bytes" }]
+    outputs: [
+      {
+        name: "matchRecord",
+        type: "tuple",
+        components: [
+          { name: "matchId", type: "bytes32" },
+          { name: "metadataHash", type: "bytes32" },
+          { name: "resolved", type: "bool" },
+          { name: "result", type: "uint8" },
+          { name: "lockDeadline", type: "uint64" }
+        ]
+      }
+    ]
   },
   {
     type: "function",
@@ -69,5 +102,69 @@ export const arenaChallengeAbi = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "balance", type: "uint256" }]
+  },
+  {
+    type: "function",
+    name: "usdcVaultBalance",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "balance", type: "uint256" }]
+  },
+  {
+    type: "function",
+    name: "owner",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "owner", type: "address" }]
+  },
+  {
+    type: "function",
+    name: "fundVault",
+    stateMutability: "payable",
+    inputs: [],
+    outputs: []
+  },
+  {
+    type: "function",
+    name: "fundVaultUSDC",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "amount", type: "uint256" }],
+    outputs: []
+  },
+  {
+    type: "function",
+    name: "withdrawVault",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "asset", type: "uint8" },
+      { name: "amount", type: "uint256" },
+      { name: "to", type: "address" }
+    ],
+    outputs: []
+  },
+  {
+    type: "event",
+    name: "ChallengeCreated",
+    inputs: [
+      { name: "slipId", type: "uint256", indexed: true },
+      { name: "player", type: "address", indexed: true },
+      { name: "matchId", type: "bytes32", indexed: true },
+      { name: "outcome", type: "uint8", indexed: false },
+      { name: "amount", type: "uint256", indexed: false },
+      { name: "asset", type: "uint8", indexed: false }
+    ]
+  }
+] as const;
+
+export const erc20Abi = [
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" }
+    ],
+    outputs: [{ name: "success", type: "bool" }]
   }
 ] as const;
