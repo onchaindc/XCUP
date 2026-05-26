@@ -1,13 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Activity, ArrowRight, CheckCircle2, Coins, Flame, Medal, RefreshCw, ShieldCheck, Trophy, Wallet, X } from "lucide-react";
+import { Activity, ArrowRight, CheckCircle2, Coins, Flame, Medal, Newspaper, RefreshCw, ShieldCheck, Trophy, Wallet, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatUnits, keccak256, parseEventLogs, parseUnits, toBytes } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect, usePublicClient, useReadContract, useWriteContract } from "wagmi";
 import { arenaChallengeAbi, arenaChallengeAddress, ARENA_ASSET_DECIMALS, ARENA_ASSET_ID, ARENA_OUTCOME_ID, erc20Abi, usdcAddress } from "@/lib/arena/contracts";
 import type { ArenaAsset, ArenaConfidence, ArenaMatch, ArenaOutcome, ArenaSlip, ArenaStats, ArenaSport } from "@/lib/arena/types";
 import { X_LAYER_EXPLORER_URL, xLayerMainnet } from "@/lib/arc";
+import type { SportsNewsItem } from "@/lib/sports";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
@@ -72,6 +74,7 @@ export function ArenaPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<ArenaMatch | null>(null);
+  const [news, setNews] = useState<SportsNewsItem[]>([]);
   const [sport, setSport] = useState<"All" | ArenaSport>("All");
   const [range, setRange] = useState<(typeof ranges)[number]>("Weekly");
   const [slips, setSlips] = useState<ArenaSlip[]>(() => readStored<ArenaSlip[]>(STORAGE_SLIPS, []));
@@ -135,6 +138,32 @@ export function ArenaPage() {
     void loadMatches(false);
     const interval = window.setInterval(() => void loadMatches(true), 60_000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadNews() {
+      try {
+        const response = await fetch("/api/sports/news", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+        const data = (await response.json()) as { items: SportsNewsItem[] };
+        if (!cancelled) {
+          setNews(data.items);
+        }
+      } catch {
+        if (!cancelled) {
+          setNews([]);
+        }
+      }
+    }
+    void loadNews();
+    const interval = window.setInterval(() => void loadNews(), 120_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -427,6 +456,7 @@ export function ArenaPage() {
           <aside className="grid content-start gap-4">
             <MySlips slips={slips} onExit={(slip) => void exitSlip(slip)} onClaim={(slip) => void claimSlip(slip)} busy={isWriting} />
             {isVaultOwner ? <VaultAdminPanel busy={isWriting} onFund={(amount, asset) => void fundVault(amount, asset)} onWithdraw={(amount, asset) => void withdrawVault(amount, asset)} /> : null}
+            <ArenaHeadlines news={news} />
             <ArenaLeaderboard slips={slips} stats={stats} sport={sport} range={range} setRange={setRange} />
           </aside>
         </section>
@@ -654,6 +684,29 @@ function VaultAdminPanel({ busy, onFund, onWithdraw }: { busy: boolean; onFund: 
         </select>
         <input className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-white outline-none" value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} placeholder={`${asset} amount to withdraw`} />
         <Button variant="secondary" disabled={busy || !Number(withdrawAmount)} onClick={() => onWithdraw(withdrawAmount, asset)}>Withdraw to Owner Wallet</Button>
+      </div>
+    </Card>
+  );
+}
+
+function ArenaHeadlines({ news }: { news: SportsNewsItem[] }) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Live Headlines</p>
+          <h2 className="mt-1 text-lg font-black text-white">World Cup pulse</h2>
+        </div>
+        <Newspaper size={18} className="text-[#18e3bd]" aria-hidden="true" />
+      </div>
+      <div className="mt-4 grid gap-2">
+        {news.slice(0, 4).map((item) => (
+          <Link key={item.id} className="block rounded-lg border border-white/10 bg-black/25 p-3 transition hover:bg-white/[0.08]" href={`/news/${encodeURIComponent(item.id)}`}>
+            <p className="text-sm font-black text-white">{item.title}</p>
+            <p className="mt-1 text-xs text-white/55">{item.source}</p>
+          </Link>
+        ))}
+        {!news.length ? <p className="rounded-lg border border-white/10 bg-black/25 p-4 text-sm text-muted">No live headlines available right now.</p> : null}
       </div>
     </Card>
   );

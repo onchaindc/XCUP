@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/app/providers";
+import { ThemeInit } from "@/components/ThemeInit";
 
 export const metadata: Metadata = {
   title: "X Cup Arena",
@@ -24,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <ThemeInit />
         <script
           dangerouslySetInnerHTML={{
             __html: `

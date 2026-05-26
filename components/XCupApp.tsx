@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Brain,
   Bot,
+  CloudSun,
   Gamepad2,
   Globe2,
   Newspaper,
@@ -26,6 +27,7 @@ import { eventStatusLabel, formatEventTime, formatLiveEventMatchup, type LiveSpo
 import { xLayerTestnet } from "@/lib/arc";
 import type { Preferences, UserProfile } from "@/lib/app-store";
 import { useAppStore } from "@/lib/app-store";
+import { applyTheme } from "@/lib/theme";
 import { useNetworkStatus } from "@/lib/use-network-status";
 import { errorMessage, shortAddress } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
@@ -69,6 +71,10 @@ export function XCupApp() {
   const liveEvents = events.filter((event) => event.status.state === "in");
   const featured = liveEvents[0] ?? events[0] ?? null;
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
+
+  useEffect(() => {
+    applyTheme(preferences.theme);
+  }, [preferences.theme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -196,6 +202,8 @@ export function TopHeader({
   onDisconnect: () => void;
 }) {
   const network = useNetworkStatus();
+  const preferences = useAppStore((state) => state.preferences);
+  const updatePreferences = useAppStore((state) => state.updatePreferences);
   const addRpcLabel = network.busy === "adding" ? "Adding" : "Add RPC";
   const switchLabel = network.busy === "switching" ? "Switching" : "Switch";
 
@@ -218,6 +226,16 @@ export function TopHeader({
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          <button
+            className="grid h-10 min-w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] px-2 text-xs font-black text-white/70 transition hover:bg-white/10 hover:text-white sm:flex sm:gap-2 sm:px-3"
+            type="button"
+            onClick={() => updatePreferences({ theme: preferences.theme === "light" ? "dark" : "light" })}
+            title={preferences.theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            aria-label="Toggle light mode"
+          >
+            <CloudSun size={16} aria-hidden="true" />
+            <span className="hidden sm:inline">{preferences.theme === "light" ? "Dark" : "Light"}</span>
+          </button>
           {network.wrongNetwork ? (
             <button
               className="hidden min-h-10 items-center gap-2 rounded-lg border border-[#ff5c39]/25 bg-[#ff5c39]/12 px-3 py-2 text-xs font-black text-[#ffb09d] transition hover:bg-[#ff5c39]/18 sm:flex"
@@ -342,6 +360,8 @@ function Hero({
         <div className="x-reference-ribbon x-reference-ribbon-two x-motion-drift-slow" />
         <div className="x-reference-ribbon x-reference-ribbon-three" />
         <div className="x-reference-ball x-motion-ball" />
+        <div className="x-flag-band x-flag-band-top" />
+        <div className="x-flag-band x-flag-band-bottom" />
       </div>
       <div className="relative z-10 grid gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-h-[18rem] flex-col justify-between sm:min-h-[22rem]">

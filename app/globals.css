@@ -19,14 +19,14 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  background: #f5f7fb;
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-soft: #1f2937;
-  --surface-border: rgba(15, 23, 42, 0.12);
-  --surface-bg: rgba(255, 255, 255, 0.86);
-  --input-bg: rgba(255, 255, 255, 0.94);
-  --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.14);
+  background: #f6f0e5;
+  --text-main: #1f2430;
+  --text-muted: #5e5a56;
+  --text-soft: #2d3340;
+  --surface-border: rgba(98, 89, 75, 0.14);
+  --surface-bg: rgba(255, 251, 245, 0.88);
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --shadow-soft: 0 20px 40px rgba(92, 74, 52, 0.12);
 }
 
 * {
@@ -58,7 +58,11 @@ body {
 }
 
 :root[data-theme="light"] body {
-  background: #f5f7fb;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(0, 135, 81, 0.08), transparent 18rem),
+    radial-gradient(circle at 86% 14%, rgba(0, 53, 128, 0.08), transparent 20rem),
+    radial-gradient(circle at 46% 90%, rgba(255, 205, 0, 0.1), transparent 22rem),
+    linear-gradient(180deg, #fbf6ee 0%, #f3ecde 100%);
   color: var(--text-main);
 }
 
@@ -111,6 +115,15 @@ canvas {
     linear-gradient(180deg, #05070d 0%, #030409 55%, #06080f 100%);
 }
 
+:root[data-theme="light"] .x-cup-bg {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0.15)),
+    radial-gradient(circle at 14% 12%, rgba(0, 135, 81, 0.12), transparent 18rem),
+    radial-gradient(circle at 82% 14%, rgba(206, 17, 38, 0.12), transparent 18rem),
+    radial-gradient(circle at 56% 70%, rgba(255, 205, 0, 0.14), transparent 24rem),
+    linear-gradient(180deg, #fbf6ee 0%, #f3ecde 100%);
+}
+
 .x-reference-grid {
   position: absolute;
   inset: 0;
@@ -120,6 +133,37 @@ canvas {
   background-size: 42px 42px;
   mask-image: radial-gradient(circle at center, black 22%, transparent 72%);
   opacity: 0.45;
+}
+
+.x-flag-band {
+  position: absolute;
+  left: -5%;
+  width: 110%;
+  height: 22px;
+  opacity: 0.28;
+  background:
+    linear-gradient(
+      90deg,
+      #009b3a 0 12%,
+      #ffdf00 12% 24%,
+      #002776 24% 36%,
+      #ce1126 36% 48%,
+      #ffffff 48% 60%,
+      #0033a0 60% 72%,
+      #d52b1e 72% 84%,
+      #009246 84% 100%
+    );
+  filter: blur(10px);
+}
+
+.x-flag-band-top {
+  top: 32px;
+  transform: rotate(-2deg);
+}
+
+.x-flag-band-bottom {
+  bottom: 28px;
+  transform: rotate(1.5deg);
 }
 
 .x-squad-grid {
