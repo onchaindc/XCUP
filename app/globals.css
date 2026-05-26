@@ -476,6 +476,20 @@ canvas {
   color: var(--text-soft) !important;
 }
 
+:root[data-theme="light"] .text-white\/70,
+:root[data-theme="light"] .text-white\/72,
+:root[data-theme="light"] .text-white\/62,
+:root[data-theme="light"] .text-white\/60,
+:root[data-theme="light"] .text-white\/58,
+:root[data-theme="light"] .text-white\/54,
+:root[data-theme="light"] .text-white\/50,
+:root[data-theme="light"] .text-white\/46,
+:root[data-theme="light"] .text-white\/42,
+:root[data-theme="light"] .text-white\/38,
+:root[data-theme="light"] .text-white\/32 {
+  color: var(--text-muted) !important;
+}
+
 :root[data-theme="light"] .text-muted {
   color: var(--text-muted) !important;
 }
@@ -484,9 +498,40 @@ canvas {
   border-color: var(--surface-border) !important;
 }
 
+:root[data-theme="light"] .bg-black,
+:root[data-theme="light"] .bg-black\/35,
+:root[data-theme="light"] .bg-black\/45,
+:root[data-theme="light"] .bg-black\/55 {
+  background-color: rgba(255, 251, 245, 0.92) !important;
+}
+
 :root[data-theme="light"] .bg-black\/20,
 :root[data-theme="light"] .bg-black\/30 {
   background-color: var(--input-bg) !important;
+}
+
+:root[data-theme="light"] .bg-white\/\[0\.045\],
+:root[data-theme="light"] .bg-white\/\[0\.04\],
+:root[data-theme="light"] .bg-white\/\[0\.05\],
+:root[data-theme="light"] .bg-white\/\[0\.06\],
+:root[data-theme="light"] .bg-white\/\[0\.07\],
+:root[data-theme="light"] .bg-white\/\[0\.08\],
+:root[data-theme="light"] .bg-white\/10 {
+  background-color: rgba(255, 251, 245, 0.78) !important;
+}
+
+:root[data-theme="light"] .border-white\/10,
+:root[data-theme="light"] .border-white\/12,
+:root[data-theme="light"] .border-white\/15 {
+  border-color: rgba(98, 89, 75, 0.14) !important;
+}
+
+:root[data-theme="light"] .bg-white {
+  background-color: #ffffff !important;
+}
+
+:root[data-theme="light"] .text-black {
+  color: #17202b !important;
 }
 
 :root[data-theme="light"] input,
@@ -497,6 +542,18 @@ canvas {
 
 :root[data-theme="light"] .shadow-soft {
   box-shadow: var(--shadow-soft) !important;
+}
+
+:root[data-theme="light"] header.sticky {
+  background: rgba(251, 246, 238, 0.9) !important;
+}
+
+:root[data-theme="light"] .x-reference-grid {
+  opacity: 0.18;
+}
+
+:root[data-theme="light"] .x-flag-band {
+  opacity: 0.2;
 }
 
 :root[data-theme="light"] .bg-arcblue {
