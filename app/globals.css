@@ -4,17 +4,20 @@
 
 :root {
   color-scheme: dark;
-  background: #05070d;
+  background: #060714;
   --text-main: #ffffff;
-  --text-muted: #8f9bb3;
+  --text-muted: #a9b5c8;
   --text-soft: rgba(255, 255, 255, 0.82);
-  --surface-border: rgba(255, 255, 255, 0.12);
-  --surface-bg: rgba(255, 255, 255, 0.07);
+  --surface-border: rgba(255, 255, 255, 0.16);
+  --surface-bg: rgba(8, 12, 24, 0.74);
   --input-bg: rgba(0, 0, 0, 0.2);
   --shadow-soft: 0 18px 55px rgba(0, 0, 0, 0.35);
-  --x-cyan: #18e3bd;
-  --x-ember: #ff5c39;
-  --x-gold: #f5a524;
+  --x-cyan: #20f0c8;
+  --x-blue: #2368ff;
+  --x-ember: #ff4f3d;
+  --x-gold: #ffd23f;
+  --x-lime: #9aff20;
+  --x-pink: #f029a8;
 }
 
 :root[data-theme="light"] {
@@ -50,7 +53,7 @@ body {
   margin: 0;
   max-width: 100vw;
   overflow-x: clip;
-  background: #05070d;
+  background: #060714;
   color: var(--text-main);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -110,10 +113,12 @@ canvas {
   position: relative;
   isolation: isolate;
   background:
-    linear-gradient(115deg, rgba(0, 135, 81, 0.14), transparent 34%),
-    linear-gradient(245deg, rgba(206, 17, 38, 0.12), transparent 36%),
-    linear-gradient(180deg, rgba(245, 165, 36, 0.07), transparent 44%),
-    linear-gradient(180deg, #05070d 0%, #030409 55%, #06080f 100%);
+    radial-gradient(circle at 13% 10%, rgba(32, 240, 200, 0.2), transparent 24rem),
+    radial-gradient(circle at 86% 0%, rgba(255, 210, 63, 0.18), transparent 24rem),
+    radial-gradient(circle at 58% 28%, rgba(240, 41, 168, 0.12), transparent 30rem),
+    linear-gradient(115deg, rgba(0, 135, 81, 0.16), transparent 34%),
+    linear-gradient(245deg, rgba(35, 104, 255, 0.16), transparent 38%),
+    linear-gradient(180deg, #070817 0%, #030511 54%, #060714 100%);
 }
 
 .x-cup-bg::before {
@@ -123,11 +128,11 @@ canvas {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    repeating-linear-gradient(105deg, rgba(0, 135, 81, 0.18) 0 2.2rem, rgba(0, 79, 46, 0.14) 2.2rem 4.4rem);
-  background-size: 56px 56px, 56px 56px, auto;
-  opacity: 0.42;
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    repeating-linear-gradient(112deg, rgba(32, 240, 200, 0.18) 0 2.2rem, rgba(255, 79, 61, 0.1) 2.2rem 4.4rem, rgba(35, 104, 255, 0.14) 4.4rem 6.6rem);
+  background-size: 58px 58px, 58px 58px, auto;
+  opacity: 0.48;
 }
 
 .x-cup-bg::after {
@@ -137,9 +142,9 @@ canvas {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(90deg, transparent 0 8%, rgba(0, 53, 128, 0.18) 8% 16%, transparent 16% 34%, rgba(255, 205, 0, 0.14) 34% 42%, transparent 42% 64%, rgba(206, 17, 38, 0.16) 64% 72%, transparent 72%),
+    linear-gradient(90deg, transparent 0 8%, rgba(35, 104, 255, 0.22) 8% 16%, transparent 16% 34%, rgba(255, 210, 63, 0.2) 34% 42%, transparent 42% 64%, rgba(255, 79, 61, 0.2) 64% 72%, transparent 72%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 35%, rgba(0, 0, 0, 0.18));
-  opacity: 0.5;
+  opacity: 0.58;
 }
 
 .x-cup-bg > * {
@@ -174,11 +179,102 @@ canvas {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
   background-size: 42px 42px;
-  mask-image: radial-gradient(circle at center, black 22%, transparent 72%);
-  opacity: 0.45;
+  mask-image: radial-gradient(circle at center, black 18%, transparent 76%);
+  opacity: 0.52;
+}
+
+.x-hero-poster {
+  background:
+    radial-gradient(circle at 76% 28%, rgba(255, 210, 63, 0.4), transparent 9rem),
+    linear-gradient(135deg, rgba(3, 6, 18, 0.84), rgba(7, 10, 26, 0.68)),
+    linear-gradient(120deg, #0b102a 0%, #051727 46%, #1b0b24 100%);
+}
+
+.x-hero-poster::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-radial-gradient(circle at 66% 46%, transparent 0 2.3rem, rgba(255, 255, 255, 0.14) 2.36rem 2.48rem),
+    conic-gradient(from 220deg at 66% 46%, #20f0c8, #9aff20, #ffd23f, #ff4f3d, #f029a8, #2368ff, #20f0c8);
+  opacity: 0.72;
+  mask-image: radial-gradient(circle at 66% 46%, black 0 18rem, transparent 24rem);
+}
+
+.x-hero-poster::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.24) 45%, rgba(0, 0, 0, 0.45)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 42%, rgba(0, 0, 0, 0.34));
+}
+
+.x-poster-trophy {
+  position: absolute;
+  right: clamp(1rem, 8vw, 8rem);
+  top: 50%;
+  width: clamp(10rem, 25vw, 22rem);
+  aspect-ratio: 0.68;
+  transform: translateY(-48%);
+  filter: drop-shadow(0 2rem 4rem rgba(0, 0, 0, 0.48));
+}
+
+.x-poster-trophy::before {
+  content: "";
+  position: absolute;
+  inset: 1% 19% 21%;
+  border-radius: 48% 48% 38% 38% / 28% 28% 52% 52%;
+  background:
+    radial-gradient(circle at 32% 18%, rgba(255, 255, 255, 0.9), transparent 0.5rem),
+    linear-gradient(100deg, #fff3a8, #ffd23f 28%, #c88417 58%, #ffef8c 78%, #9a5b12);
+  box-shadow:
+    inset 0 0 0 0.18rem rgba(255, 255, 255, 0.22),
+    inset -1.2rem -1rem 1.8rem rgba(88, 42, 0, 0.38);
+}
+
+.x-poster-trophy::after {
+  content: "";
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 5%;
+  height: 27%;
+  border-radius: 45% 45% 12% 12%;
+  background:
+    linear-gradient(180deg, #ffd23f 0 32%, #11182b 32% 54%, #f4f7fb 54% 66%, #ffd23f 66% 100%);
+  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.34);
+}
+
+.x-poster-ball {
+  position: absolute;
+  right: clamp(9rem, 27vw, 25rem);
+  bottom: clamp(1rem, 5vw, 4rem);
+  width: clamp(5.8rem, 10vw, 8.5rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 31% 24%, #ffffff, rgba(255, 255, 255, 0.56) 19%, transparent 38%),
+    conic-gradient(from 18deg, #111827 0 12%, #ffffff 12% 20%, #111827 20% 34%, #ffffff 34% 45%, #111827 45% 60%, #ffffff 60% 72%, #111827 72% 88%, #ffffff 88% 100%);
+  box-shadow: 0 1.4rem 3rem rgba(0, 0, 0, 0.45);
+}
+
+.x-poster-rings {
+  position: absolute;
+  right: -8%;
+  top: -18%;
+  width: min(62vw, 46rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle, rgba(255, 255, 255, 0.88) 0 0.16rem, transparent 0.18rem 2.3rem),
+    conic-gradient(from 35deg, #2368ff, #20f0c8, #9aff20, #ffd23f, #ff4f3d, #f029a8, #2368ff);
+  opacity: 0.75;
+  mix-blend-mode: screen;
+  mask-image: radial-gradient(circle, black 0 46%, transparent 70%);
 }
 
 .x-flag-band {
@@ -186,7 +282,7 @@ canvas {
   left: -5%;
   width: 110%;
   height: 22px;
-  opacity: 0.28;
+  opacity: 0.34;
   background:
     linear-gradient(
       90deg,
@@ -199,7 +295,7 @@ canvas {
       #d52b1e 72% 84%,
       #009246 84% 100%
     );
-  filter: blur(10px);
+  filter: blur(8px);
 }
 
 .x-flag-band-top {
@@ -226,9 +322,9 @@ canvas {
 
 .x-reference-ribbon {
   position: absolute;
-  border-radius: 28px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04));
-  box-shadow: 0 0 120px rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 210, 63, 0.6), rgba(32, 240, 200, 0.12), rgba(240, 41, 168, 0.08));
+  box-shadow: 0 0 120px rgba(32, 240, 200, 0.12);
   transform: rotate(-28deg);
 }
 
@@ -264,12 +360,12 @@ canvas {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background:
-    radial-gradient(circle at 28% 28%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85) 18%, rgba(255, 255, 255, 0.2) 37%, transparent 64%),
-    radial-gradient(circle at center, #0c111d 0%, #070a10 58%, #030406 100%);
+    radial-gradient(circle at 28% 28%, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.85) 18%, rgba(255, 255, 255, 0.2) 37%, transparent 64%),
+    conic-gradient(from 18deg, #f4f7fb, #111827, #f4f7fb, #111827, #f4f7fb);
   box-shadow:
     0 0 0 0.18rem rgba(255, 255, 255, 0.2),
     0 0 3rem rgba(255, 255, 255, 0.08),
-    0 0 5rem rgba(24, 227, 189, 0.14);
+    0 0 5rem rgba(255, 210, 63, 0.2);
 }
 
 .x-reference-ball::before,
@@ -600,6 +696,20 @@ canvas {
 
 :root[data-theme="light"] .x-flag-band {
   opacity: 0.2;
+}
+
+:root[data-theme="light"] .x-hero-poster,
+:root[data-theme="light"] .x-hero-poster .text-white,
+:root[data-theme="light"] .x-hero-poster .text-white\/52,
+:root[data-theme="light"] .x-hero-poster .text-white\/68,
+:root[data-theme="light"] .x-hero-poster .text-white\/72,
+:root[data-theme="light"] .x-hero-poster .text-white\/78 {
+  color: #ffffff !important;
+}
+
+:root[data-theme="light"] .x-hero-poster .bg-white\/\[0\.08\],
+:root[data-theme="light"] .x-hero-poster .bg-white\/\[0\.1\] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 :root[data-theme="light"] .bg-arcblue {
