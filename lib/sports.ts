@@ -48,6 +48,48 @@ export type LiveSportsResponse = {
   events: LiveSportEvent[];
 };
 
+export type LiveMatchStat = {
+  label: string;
+  home: string;
+  away: string;
+};
+
+export type LiveMatchPlayer = {
+  id?: string;
+  name: string;
+  position?: string;
+  jersey?: string;
+  starter?: boolean;
+};
+
+export type LiveMatchTeamLineup = {
+  team: string;
+  formation?: string;
+  starters: LiveMatchPlayer[];
+  substitutes: LiveMatchPlayer[];
+};
+
+export type LiveMatchScoringPlay = {
+  id: string;
+  team?: string;
+  athlete?: string;
+  minute?: string;
+  text: string;
+  score?: string;
+};
+
+export type LiveMatchDetails = {
+  id: string;
+  generatedAt: string;
+  source: string;
+  available: boolean;
+  message?: string;
+  event?: LiveSportEvent;
+  stats: LiveMatchStat[];
+  goals: LiveMatchScoringPlay[];
+  lineups: LiveMatchTeamLineup[];
+};
+
 export type SportsNewsResponse = {
   generatedAt: string;
   items: SportsNewsItem[];

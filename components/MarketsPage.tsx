@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { AlertCircle, ArrowRight, CalendarClock, CheckCircle2, Radio, RefreshCw, Trophy } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, isAddress, keccak256, parseEther, toBytes } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect, useWriteContract } from "wagmi";
@@ -263,6 +264,12 @@ function MarketEventCard({ event, onPick }: { event: LiveSportEvent; onPick: (pi
           </button>
         ))}
       </div>
+      {isLive ? (
+        <Link className="mt-3 flex w-fit items-center gap-2 rounded-lg border border-[#18e3bd]/30 bg-[#18e3bd]/10 px-3 py-2 text-sm font-black text-[#80ffe2] transition hover:bg-[#18e3bd]/18" href={`/matches/live?id=${encodeURIComponent(event.id)}`}>
+          Open live details
+          <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      ) : null}
       {!isLive ? <p className="mt-3 text-xs font-bold text-white/42">Scheduled fixture. Picks can be staged before kickoff.</p> : null}
     </motion.article>
   );

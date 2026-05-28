@@ -99,7 +99,7 @@ export function SquadsPage() {
     }
 
     void loadSquads();
-    const interval = window.setInterval(() => void loadSquads(), 60_000);
+    const interval = window.setInterval(() => void loadSquads(), 12_000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
@@ -162,7 +162,7 @@ export function SquadsPage() {
       setSquads((current) => [data.squad!, ...current.filter((item) => item.id !== data.squad?.id)]);
       setActiveSquadId(data.squad.id);
       setDraft({ name: "", motto: "", territory: "", role: "Captain", accent: squadAccents[0] });
-      setBanner(`Created ${data.squad.name}.`);
+      setBanner(`Created ${data.squad.name}. It is now visible on the shared squad board.`);
     } catch (error) {
       setBanner(error instanceof Error ? error.message : "Unable to create squad.");
     }
@@ -204,7 +204,7 @@ export function SquadsPage() {
       }
       setSquads((current) => current.map((item) => (item.id === squad.id ? data.squad! : item)));
       setJoinedSquadIds((current) => new Set(current).add(squad.id));
-      setBanner(txHash ? `Joined ${squad.name}. Tx ${txHash.slice(0, 10)}...` : `Joined ${squad.name}.`);
+      setBanner(txHash ? `Joined ${squad.name}. Tx ${txHash.slice(0, 10)}...` : `Joined ${squad.name}. Shared roster updated.`);
     } catch (error) {
       setBanner(error instanceof Error ? error.message : "Unable to join squad.");
     }

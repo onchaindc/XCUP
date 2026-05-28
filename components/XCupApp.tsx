@@ -475,6 +475,12 @@ function EventMiniCard({ event }: { event: LiveSportEvent }) {
         <span className="rounded-md bg-white/[0.06] p-2">{event.awayTeam.shortName} {event.awayTeam.score ?? ""}</span>
         <span className="rounded-md bg-white/[0.06] p-2">{event.homeTeam.shortName} {event.homeTeam.score ?? ""}</span>
       </div>
+      {isLive ? (
+        <Link className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-[#18e3bd]/30 bg-[#18e3bd]/10 px-3 py-2 text-sm font-black text-[#80ffe2] transition hover:bg-[#18e3bd]/18" href={`/matches/live?id=${encodeURIComponent(event.id)}`}>
+          Open live details
+          <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      ) : null}
     </article>
   );
 }

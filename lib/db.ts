@@ -59,4 +59,27 @@ create table if not exists squads (
   creator text,
   created_at timestamptz default now()
 );
+
+create table if not exists squad_members (
+  squad_id text not null references squads(id) on delete cascade,
+  address text not null,
+  label text,
+  joined_at timestamptz default now(),
+  online boolean not null default true,
+  primary key (squad_id, address)
+);
+
+create table if not exists squad_messages (
+  id text primary key,
+  squad_id text not null references squads(id) on delete cascade,
+  author text not null,
+  body text not null,
+  kind text not null default 'message',
+  reply_to text,
+  pinned boolean not null default false,
+  reactions jsonb not null default '{}'::jsonb,
+  attachment jsonb,
+  tip_amount text,
+  created_at timestamptz default now()
+);
 `;

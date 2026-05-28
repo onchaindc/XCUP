@@ -139,6 +139,18 @@ export async function POST(request: NextRequest) {
     });
     if (response?.ok) {
       const [created] = (await response.json()) as Array<Parameters<typeof toRecord>[0]>;
+      if (addressKey) {
+        await supabaseRequest("squad_members", {
+          method: "POST",
+          headers: { prefer: "resolution=merge-duplicates" },
+          body: JSON.stringify({
+            squad_id: created.id,
+            address: addressKey,
+            label: toMemberLabel(addressKey),
+            online: true
+          })
+        });
+      }
       return NextResponse.json({ squad: toRecord(created) });
     }
     if (response) {
@@ -170,7 +182,19 @@ export async function POST(request: NextRequest) {
     if (!current) {
       return NextResponse.json({ error: "Squad not found." }, { status: 404 });
     }
-    const updatedMembers = current.creator?.toLowerCase() === addressKey ? current.members : current.members + 1;
+    await supabaseRequest("squad_members", {
+      method: "POST",
+      headers: { prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({
+        squad_id: current.id,
+        address: addressKey,
+        label: toMemberLabel(addressKey),
+        online: true
+      })
+    });
+    const countResponse = await supabaseRequest(`squad_members?squad_id=eq.${encodeURIComponent(current.id)}&select=address`);
+    const countRows = countResponse?.ok ? ((await countResponse.json()) as Array<{ address: string }>) : [];
+    const updatedMembers = countRows.length || Math.max(current.members, 1);
     const update = await supabaseRequest(`squads?id=eq.${encodeURIComponent(current.id)}`, {
       method: "PATCH",
       headers: { prefer: "return=representation" },
