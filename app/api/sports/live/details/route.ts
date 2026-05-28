@@ -238,7 +238,8 @@ export async function GET(request: NextRequest) {
   }
 
   const summary = await fetchJson<EspnSummary>(`https://site.api.espn.com/apis/site/v2/sports/${parts.slug}/summary?event=${encodeURIComponent(parts.eventId)}`);
-  const competitors = summary?.header?.competitions?.[0]?.competitors ?? event.competitions?.[0]?.competitors ?? [];
+  const safeSummary = summary ?? undefined;
+  const competitors = safeSummary?.header?.competitions?.[0]?.competitors ?? event.competitions?.[0]?.competitors ?? [];
   const home = competitors.find((item) => item.homeAway === "home") ?? competitors[0];
   const away = competitors.find((item) => item.homeAway === "away") ?? competitors[1];
 
@@ -248,8 +249,8 @@ export async function GET(request: NextRequest) {
     source: "ESPN live summary",
     available: true,
     event: normalizedEvent,
-    stats: normalizeStats(home, away, summary),
-    goals: normalizeGoals(event, summary),
-    lineups: normalizeLineups(competitors, summary)
+    stats: normalizeStats(home, away, safeSummary),
+    goals: normalizeGoals(event, safeSummary),
+    lineups: normalizeLineups(competitors, safeSummary)
   } satisfies LiveMatchDetails);
 }

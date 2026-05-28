@@ -15,7 +15,6 @@ import {
   Send,
   Sparkles,
   Swords,
-  Trash2,
   Trophy,
   Users,
   Vote,
@@ -24,7 +23,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
 import type { SquadMessage, SquadRoom } from "@/lib/squads";
@@ -44,7 +42,6 @@ const gifPicks = [
 ];
 
 export function SquadRoomPage({ id }: { id: string }) {
-  const router = useRouter();
   const [showLoader, setShowLoader] = useState(true);
   const [room, setRoom] = useState<SquadRoom | null>(null);
   const [loading, setLoading] = useState(true);
@@ -170,25 +167,6 @@ export function SquadRoomPage({ id }: { id: string }) {
     setStatus("");
   }
 
-  async function deleteSquad() {
-    if (!address) {
-      setStatus("Connect the creator wallet to delete this squad.");
-      return;
-    }
-    const response = await fetch(`/api/squads/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ address })
-    });
-    const data = (await response.json().catch(() => ({}))) as { error?: string };
-    if (!response.ok) {
-      setStatus(data.error || "Unable to delete squad.");
-      return;
-    }
-    window.localStorage.removeItem(localMessagesKey);
-    router.push("/squads");
-  }
-
   const tabs = useMemo(
     () => [
       { id: "overview" as const, label: "Overview", icon: Trophy },
@@ -234,10 +212,6 @@ export function SquadRoomPage({ id }: { id: string }) {
                     {["Online", "Live activity", "Ranking", "Competitions"].map((item) => (
                       <span key={item} className="rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs font-bold text-white/70">{item}</span>
                     ))}
-                    <button className="rounded-lg border border-[#ff5c39]/30 bg-[#ff5c39]/10 px-2.5 py-1 text-xs font-black text-[#ffb09d] transition hover:bg-[#ff5c39]/18" type="button" onClick={() => void deleteSquad()}>
-                      <Trash2 className="mr-1 inline" size={13} aria-hidden="true" />
-                      Delete squad
-                    </button>
                   </div>
                 </div>
                 <div className="grid gap-2">

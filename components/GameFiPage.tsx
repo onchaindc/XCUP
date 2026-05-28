@@ -1,33 +1,46 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CheckCircle2, CircleDot, Goal, Shield, Shirt, Trophy, Zap } from "lucide-react";
+import { CheckCircle2, CircleDot, Goal, Plus, Shield, Shirt, Trophy, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
-import type { LiveSportEvent } from "@/lib/sports";
 import { xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
+import {
+  clubsForSport,
+  footballSlots,
+  type LineupSlot,
+  type PlayerClub,
+  type PlayerOption
+} from "@/lib/player-catalog";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
-type PlayerPick = {
+type LockedLineup = {
   id: string;
   name: string;
-  team: string;
-  role: "FWD" | "MID" | "DEF" | "GK";
+  picks: Record<string, PlayerOption>;
+  lockedAt: string;
+  unlockAt: string;
+  xp: number;
 };
 
-const roles: PlayerPick["role"][] = ["GK", "DEF", "MID", "FWD"];
 const penaltyTargets = ["Left", "Center", "Right"] as const;
+const lineupStorageKey = "xcup-weekly-lineups";
+const weekMs = 7 * 24 * 60 * 60 * 1000;
 
 export function GameFiPage() {
   const [showLoader, setShowLoader] = useState(true);
-  const [events, setEvents] = useState<LiveSportEvent[]>([]);
-  const [selectedPlayers, setSelectedPlayers] = useState<PlayerPick[]>([]);
+  const [activeSlot, setActiveSlot] = useState<LineupSlot>(footballSlots[0]);
+  const [selectedClubId, setSelectedClubId] = useState("");
+  const [players, setPlayers] = useState<PlayerOption[]>([]);
+  const [lineup, setLineup] = useState<Record<string, PlayerOption>>({});
+  const [lockedLineups, setLockedLineups] = useState<LockedLineup[]>([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [lineupStatus, setLineupStatus] = useState("");
   const [keeperPick, setKeeperPick] = useState<(typeof penaltyTargets)[number] | null>(null);
   const [penaltyResult, setPenaltyResult] = useState("");
-  const [lineupStatus, setLineupStatus] = useState("");
   const [walletError, setWalletError] = useState("");
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({
@@ -38,38 +51,59 @@ export function GameFiPage() {
   const { connectors, connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
+  const teams = useMemo(() => clubsForSport("football"), []);
+  const selectedClub = teams.find((team) => team.id === selectedClubId) ?? null;
+  const selectedCount = Object.keys(lineup).length;
+  const lineupScore = Object.values(lineup).reduce((score, player, index) => score + player.name.length * 5 + (index + 1) * 7, 0);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setShowLoader(false), 1200);
+    const timer = window.setTimeout(() => setShowLoader(false), 900);
     return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(lineupStorageKey);
+      setLockedLineups(raw ? (JSON.parse(raw) as LockedLineup[]) : []);
+    } catch {
+      setLockedLineups([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(lineupStorageKey, JSON.stringify(lockedLineups));
+  }, [lockedLineups]);
+
+  useEffect(() => {
     let cancelled = false;
-    async function loadEvents() {
+    async function loadPlayers() {
+      if (!selectedClubId) {
+        setPlayers([]);
+        return;
+      }
+      setLoadingPlayers(true);
       try {
-        const response = await fetch("/api/sports/live", { cache: "no-store" });
-        if (!response.ok) {
-          return;
-        }
-        const data = (await response.json()) as { events: LiveSportEvent[] };
+        const response = await fetch(`/api/players?sport=football&club=${encodeURIComponent(selectedClubId)}&position=${encodeURIComponent(activeSlot.position)}`, { cache: "no-store" });
+        const data = (await response.json()) as { players: PlayerOption[] };
         if (!cancelled) {
-          setEvents(data.events);
+          setPlayers(data.players);
         }
       } catch {
         if (!cancelled) {
-          setEvents([]);
+          setPlayers([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPlayers(false);
         }
       }
     }
-    void loadEvents();
+
+    void loadPlayers();
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const playerPool = useMemo(() => makePlayerPool(events), [events]);
-  const lineupScore = selectedPlayers.reduce((score, player, index) => score + player.name.length * 3 + (index + 1) * 4, 0);
+  }, [activeSlot.position, selectedClubId]);
 
   async function connectWallet() {
     const connector = pickWalletConnector(connectors);
@@ -85,16 +119,45 @@ export function GameFiPage() {
     }
   }
 
-  function togglePlayer(player: PlayerPick) {
-    setSelectedPlayers((current) => {
-      if (current.some((item) => item.id === player.id)) {
-        return current.filter((item) => item.id !== player.id);
-      }
-      if (current.length >= 5) {
-        return current;
-      }
-      return [...current, player];
-    });
+  function pickPlayer(player: PlayerOption) {
+    setLineup((current) => ({ ...current, [activeSlot.id]: player }));
+    const nextIndex = footballSlots.findIndex((slot) => slot.id === activeSlot.id) + 1;
+    if (footballSlots[nextIndex]) {
+      setActiveSlot(footballSlots[nextIndex]);
+      setSelectedClubId("");
+    }
+  }
+
+  function newLineup() {
+    setLineup({});
+    setActiveSlot(footballSlots[0]);
+    setSelectedClubId("");
+    setLineupStatus("New lineup draft ready.");
+  }
+
+  function lockLineup() {
+    if (!isConnected) {
+      setLineupStatus("Connect wallet to lock a weekly lineup.");
+      return;
+    }
+    if (selectedCount < footballSlots.length) {
+      setLineupStatus("Fill all 11 positions before locking.");
+      return;
+    }
+    const lockedAt = new Date();
+    const next: LockedLineup = {
+      id: crypto.randomUUID(),
+      name: `Lineup ${lockedLineups.length + 1}`,
+      picks: lineup,
+      lockedAt: lockedAt.toISOString(),
+      unlockAt: new Date(lockedAt.getTime() + weekMs).toISOString(),
+      xp: lineupScore
+    };
+    setLockedLineups((current) => [next, ...current]);
+    setLineupStatus(`${next.name} locked for one week. Player live performance will drive XP and health.`);
+    setLineup({});
+    setActiveSlot(footballSlots[0]);
+    setSelectedClubId("");
   }
 
   function playPenalty(target: (typeof penaltyTargets)[number]) {
@@ -102,10 +165,6 @@ export function GameFiPage() {
     const keeperDive = penaltyTargets[Math.floor(Math.random() * penaltyTargets.length)];
     const scored = keeperDive !== target;
     setPenaltyResult(scored ? `Goal. Keeper went ${keeperDive}.` : `Saved. Keeper read ${keeperDive}.`);
-  }
-
-  function lockLineup() {
-    setLineupStatus(`Lineup locked for this matchday session with ${lineupScore} XP.`);
   }
 
   return (
@@ -123,20 +182,29 @@ export function GameFiPage() {
         {walletError ? <p className="mb-4 rounded-lg border border-[#ff5c39]/25 bg-[#ff5c39]/10 px-4 py-3 text-sm font-bold text-[#ffb09d]">{walletError}</p> : null}
         <header className="rounded-lg border border-white/10 bg-white/[0.045] p-4 sm:p-5">
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">GameFi</p>
-          <h1 className="mt-2 text-3xl font-black tracking-normal text-white sm:text-5xl">Play the matchday layer</h1>
+          <h1 className="mt-2 text-3xl font-black tracking-normal text-white sm:text-5xl">World Cup weekly lineups</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">
-            Two simple playable loops for the hackathon build: fantasy lineup selection and a penalty duel.
+            Build multiple real-player Starting XIs from clubs and countries. Each locked squad stays active for one week and earns XP from live player performance.
           </p>
         </header>
         <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
           <FantasyLineup
-            playerPool={playerPool}
-            selectedPlayers={selectedPlayers}
-            togglePlayer={togglePlayer}
+            teams={teams}
+            selectedClub={selectedClub}
+            selectedClubId={selectedClubId}
+            setSelectedClubId={setSelectedClubId}
+            activeSlot={activeSlot}
+            setActiveSlot={setActiveSlot}
+            players={players}
+            loadingPlayers={loadingPlayers}
+            lineup={lineup}
+            pickPlayer={pickPlayer}
             lineupScore={lineupScore}
-            isConnected={isConnected}
+            selectedCount={selectedCount}
             lineupStatus={lineupStatus}
+            lockedLineups={lockedLineups}
             onLockLineup={lockLineup}
+            onNewLineup={newLineup}
           />
           <PenaltyDuel keeperPick={keeperPick} penaltyResult={penaltyResult} playPenalty={playPenalty} />
         </section>
@@ -145,88 +213,176 @@ export function GameFiPage() {
   );
 }
 
-function makePlayerPool(events: LiveSportEvent[]): PlayerPick[] {
-  const teams = events.slice(0, 8).flatMap((event) => [event.homeTeam, event.awayTeam]);
-  if (!teams.length) {
-    return [];
-  }
-  return teams.slice(0, 20).map((team, index) => ({
-    id: `${team.id ?? team.shortName}-${index}`,
-    name: team.name,
-    team: team.shortName,
-    role: roles[index % roles.length]
-  }));
-}
-
 function FantasyLineup({
-  playerPool,
-  selectedPlayers,
-  togglePlayer,
+  teams,
+  selectedClub,
+  selectedClubId,
+  setSelectedClubId,
+  activeSlot,
+  setActiveSlot,
+  players,
+  loadingPlayers,
+  lineup,
+  pickPlayer,
   lineupScore,
-  isConnected,
+  selectedCount,
   lineupStatus,
-  onLockLineup
+  lockedLineups,
+  onLockLineup,
+  onNewLineup
 }: {
-  playerPool: PlayerPick[];
-  selectedPlayers: PlayerPick[];
-  togglePlayer: (player: PlayerPick) => void;
+  teams: PlayerClub[];
+  selectedClub: PlayerClub | null;
+  selectedClubId: string;
+  setSelectedClubId: (value: string) => void;
+  activeSlot: LineupSlot;
+  setActiveSlot: (slot: LineupSlot) => void;
+  players: PlayerOption[];
+  loadingPlayers: boolean;
+  lineup: Record<string, PlayerOption>;
+  pickPlayer: (player: PlayerOption) => void;
   lineupScore: number;
-  isConnected: boolean;
+  selectedCount: number;
   lineupStatus: string;
+  lockedLineups: LockedLineup[];
   onLockLineup: () => void;
+  onNewLineup: () => void;
 }) {
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Fantasy XI Lite</p>
-          <h2 className="mt-1 text-2xl font-black text-white">Select five</h2>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">World Cup XI</p>
+          <h2 className="mt-1 text-2xl font-black text-white">Pick real players</h2>
         </div>
         <div className="rounded-lg border border-white/10 bg-black/35 p-3 text-right">
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/40">Lineup score</p>
           <p className="text-2xl font-black text-[#18e3bd]">{lineupScore}</p>
         </div>
       </div>
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="grid gap-2 sm:grid-cols-2">
-          {playerPool.length ? playerPool.map((player) => {
-            const selected = selectedPlayers.some((item) => item.id === player.id);
-            return (
-              <button
-                key={player.id}
-                className={`rounded-lg border p-3 text-left transition ${selected ? "border-[#18e3bd]/40 bg-[#18e3bd]/10" : "border-white/10 bg-black/35 hover:bg-white/[0.07]"}`}
-                type="button"
-                onClick={() => togglePlayer(player)}
-              >
-                <Shirt size={17} className={selected ? "text-[#18e3bd]" : "text-white/44"} aria-hidden="true" />
-                <p className="mt-2 font-black text-white">{player.name}</p>
-                <p className="mt-1 text-xs font-bold text-white/44">{player.role} - {player.team}</p>
-              </button>
-            );
-          }) : (
-            <div className="rounded-lg border border-white/10 bg-black/35 p-5 text-sm text-white/60 sm:col-span-2">
-              Waiting for real sports feed teams. No fake fantasy roster is shown.
-            </div>
-          )}
-        </div>
-        <div className="rounded-lg border border-white/10 bg-black/35 p-4">
-          <p className="font-black text-white">Your lineup</p>
-          <div className="mt-3 grid gap-2">
-            {selectedPlayers.map((player) => (
-              <div key={player.id} className="flex items-center justify-between gap-2 rounded-md bg-white/[0.06] p-2 text-sm">
-                <span className="font-bold text-white">{player.name}</span>
-                <span className="text-white/42">{player.role}</span>
-              </div>
-            ))}
-            {!selectedPlayers.length ? <p className="text-sm leading-6 text-white/54">Pick up to five real teams/players from the live board.</p> : null}
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="grid gap-4">
+          <div className="relative aspect-[3/4] min-h-[34rem] overflow-hidden rounded-lg border border-white/10 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.04)_0_1px,transparent_1px_84px),linear-gradient(180deg,rgba(24,227,189,0.18),rgba(2,7,6,0.95))]">
+            <div className="absolute inset-x-[8%] top-[8%] h-[84%] rounded-[42%] border border-white/15" />
+            {footballSlots.map((slot) => {
+              const pick = lineup[slot.id];
+              const active = activeSlot.id === slot.id;
+              return (
+                <motion.button
+                  key={slot.id}
+                  className={`absolute grid min-h-16 w-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-lg border p-2 text-center text-[11px] font-black shadow-xl transition ${active ? "border-[#18e3bd] bg-[#18e3bd]/20" : "border-white/15 bg-black/55 hover:bg-white/10"}`}
+                  style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
+                  type="button"
+                  whileHover={{ scale: 1.04 }}
+                  onClick={() => setActiveSlot(slot)}
+                >
+                  {pick?.image ? <img className="h-8 w-8 rounded-full object-cover" src={pick.image} alt="" /> : <Shirt size={17} className="text-white/50" aria-hidden="true" />}
+                  <span className="line-clamp-2">{pick?.name ?? slot.label}</span>
+                </motion.button>
+              );
+            })}
           </div>
-          <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={!isConnected || selectedPlayers.length < 5} onClick={onLockLineup}>
-            <CheckCircle2 size={16} aria-hidden="true" />
-            Lock Lineup
-          </button>
-          {lineupStatus ? <p className="mt-3 rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 p-3 text-sm font-bold text-[#80ffe2]">{lineupStatus}</p> : null}
-          {!isConnected ? <p className="mt-3 text-xs font-bold text-white/44">Connect wallet to lock lineup.</p> : null}
+          <div className="grid gap-3 rounded-lg border border-white/10 bg-black/35 p-4 sm:grid-cols-3">
+            <MiniMetric icon={Trophy} label="Filled" value={`${selectedCount}/11`} />
+            <MiniMetric icon={Shield} label="Lock" value="7 days" />
+            <MiniMetric icon={Zap} label="Health" value={`${Math.min(100, Math.round(lineupScore / 12))}%`} />
+          </div>
         </div>
+        <aside className="grid content-start gap-3">
+          <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Active position</p>
+            <p className="mt-1 text-xl font-black text-white">{activeSlot.label}</p>
+            <select className="mt-3 w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-sm font-black text-white outline-none focus:border-[#18e3bd]/60" value={selectedClubId} onChange={(event) => setSelectedClubId(event.target.value)}>
+              <option value="">Select club or country</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>{team.name} - {team.league}</option>
+              ))}
+            </select>
+            <div className="mt-3 grid max-h-52 gap-2 overflow-y-auto pr-1">
+              {teams.map((team) => (
+                <button
+                  key={team.id}
+                  className={`flex items-center gap-3 rounded-lg border p-2 text-left transition ${selectedClubId === team.id ? "border-[#18e3bd]/45 bg-[#18e3bd]/10" : "border-white/10 bg-white/[0.045] hover:bg-white/[0.08]"}`}
+                  type="button"
+                  onClick={() => setSelectedClubId(team.id)}
+                >
+                  <TeamLogo team={team} />
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-black text-white">{team.name}</span>
+                    <span className="block truncate text-[11px] font-bold text-white/42">{team.kind === "country" ? "Country" : "Club"} - {team.league}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            {selectedClub ? <TeamBadge team={selectedClub} /> : null}
+          </div>
+          <div className="grid max-h-[25rem] gap-2 overflow-y-auto rounded-lg border border-white/10 bg-black/35 p-3">
+            {loadingPlayers ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm text-white/58">Loading real roster...</p> : null}
+            {!loadingPlayers && players.map((player) => (
+              <button key={player.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3 text-left transition hover:border-[#18e3bd]/40 hover:bg-[#18e3bd]/10" type="button" onClick={() => pickPlayer(player)}>
+                {player.image ? <img className="h-11 w-11 rounded-full object-cover" src={player.image} alt="" /> : <span className="grid h-11 w-11 place-items-center rounded-full bg-white/[0.08]"><Shirt size={16} aria-hidden="true" /></span>}
+                <span className="min-w-0">
+                  <span className="block truncate font-black text-white">{player.name}</span>
+                  <span className="block text-xs font-bold text-white/42">{player.position} - {player.club}</span>
+                </span>
+              </button>
+            ))}
+            {!loadingPlayers && selectedClubId && !players.length ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm leading-6 text-white/58">No player data returned by the source for this position. Try another club/country.</p> : null}
+            {!selectedClubId ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm leading-6 text-white/58">Choose a club or country to load real players for {activeSlot.label}.</p> : null}
+          </div>
+          <div className="grid gap-2 rounded-lg border border-white/10 bg-black/35 p-4">
+            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={selectedCount < 11} onClick={onLockLineup}>
+              <CheckCircle2 size={16} aria-hidden="true" />
+              Lock weekly lineup
+            </button>
+            <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-3 text-sm font-black text-white transition hover:bg-white/12" type="button" onClick={onNewLineup}>
+              <Plus size={16} aria-hidden="true" />
+              New lineup
+            </button>
+            {lineupStatus ? <p className="rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 p-3 text-sm font-bold text-[#80ffe2]">{lineupStatus}</p> : null}
+          </div>
+          <LockedLineups lineups={lockedLineups} />
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function TeamBadge({ team }: { team: PlayerClub }) {
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3">
+      <TeamLogo team={team} />
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-black text-white">{team.name}</span>
+        <span className="block text-xs font-bold text-white/42">{team.kind === "country" ? "Country" : "Club"} - {team.league}</span>
+      </span>
+    </div>
+  );
+}
+
+function TeamLogo({ team }: { team: PlayerClub }) {
+  const src = team.logo ?? (team.flagCode ? `https://flagcdn.com/w80/${team.flagCode}.png` : "");
+  return src ? <img className="h-9 w-9 shrink-0 rounded-md object-contain" src={src} alt="" /> : <Shirt size={24} className="shrink-0 text-white/44" aria-hidden="true" />;
+}
+
+function LockedLineups({ lineups }: { lineups: LockedLineup[] }) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-black/35 p-4">
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Weekly locks</p>
+      <div className="mt-3 grid gap-2">
+        {lineups.map((lineup) => (
+          <div key={lineup.id} className="rounded-lg border border-white/10 bg-white/[0.045] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-black text-white">{lineup.name}</p>
+            <p className="text-sm font-black text-[#18e3bd]">{lineup.xp} XP</p>
+            </div>
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-black/50">
+              <div className="h-full rounded-full bg-[#18e3bd]" style={{ width: `${Math.min(100, Math.round(lineup.xp / 12))}%` }} />
+            </div>
+            <p className="mt-2 text-xs font-bold text-white/42">Locked until {new Date(lineup.unlockAt).toLocaleDateString()} - live player stats update health and XP when source data is available.</p>
+          </div>
+        ))}
+        {!lineups.length ? <p className="text-sm leading-6 text-white/58">Locked lineups appear here and stay tracked for one week.</p> : null}
       </div>
     </section>
   );

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  fallbackPlayersFor,
   normalizeBasketballPosition,
   normalizeFootballPosition,
   playerClubs,
@@ -43,6 +42,10 @@ type EspnRoster = {
 const espnLeagueSlug: Record<string, string> = {
   "Premier League": "soccer/eng.1",
   LaLiga: "soccer/esp.1",
+  "Ligue 1": "soccer/fra.1",
+  Bundesliga: "soccer/ger.1",
+  "Serie A": "soccer/ita.1",
+  "World Cup": "soccer/fifa.world",
   NBA: "basketball/nba"
 };
 
@@ -126,9 +129,8 @@ export async function GET(request: NextRequest) {
   }
 
   const remotePlayers = await fetchEspnRoster(sport, club.league, club.name, position);
-  const fallbackPlayers = fallbackPlayersFor(club.name, sport, position);
   const seen = new Set<string>();
-  const players = [...remotePlayers, ...fallbackPlayers].filter((player) => {
+  const players = remotePlayers.filter((player) => {
     const key = player.name.toLowerCase();
     if (seen.has(key)) {
       return false;
