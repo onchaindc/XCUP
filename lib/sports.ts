@@ -29,6 +29,42 @@ export type LiveSportEvent = {
   link?: string;
 };
 
+export type LiveMatchStat = {
+  label: string;
+  home: string;
+  away: string;
+};
+
+export type LiveMatchPlayerEvent = {
+  id: string;
+  minute: string;
+  team: string;
+  player: string;
+  assist?: string;
+  type: "goal" | "card" | "substitution" | "event";
+  detail?: string;
+};
+
+export type LiveMatchLineup = {
+  team: string;
+  starters: string[];
+  substitutes: string[];
+};
+
+export type LiveMatchDetails = {
+  id: string;
+  generatedAt: string;
+  source: string;
+  available: boolean;
+  message?: string;
+  headlineStats: LiveMatchStat[];
+  teamStats: LiveMatchStat[];
+  goals: LiveMatchPlayerEvent[];
+  cards: LiveMatchPlayerEvent[];
+  substitutions: LiveMatchPlayerEvent[];
+  lineups: LiveMatchLineup[];
+};
+
 export type SportsNewsItem = {
   id: string;
   title: string;

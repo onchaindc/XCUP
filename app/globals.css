@@ -19,14 +19,14 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  background: #f6f0e5;
-  --text-main: #1f2430;
-  --text-muted: #5e5a56;
-  --text-soft: #2d3340;
-  --surface-border: rgba(98, 89, 75, 0.14);
-  --surface-bg: rgba(255, 251, 245, 0.88);
-  --input-bg: rgba(255, 255, 255, 0.9);
-  --shadow-soft: 0 20px 40px rgba(92, 74, 52, 0.12);
+  background: #eef3f8;
+  --text-main: #111827;
+  --text-muted: #46515f;
+  --text-soft: #202a36;
+  --surface-border: rgba(32, 42, 54, 0.18);
+  --surface-bg: rgba(255, 255, 255, 0.9);
+  --input-bg: rgba(255, 255, 255, 0.94);
+  --shadow-soft: 0 20px 42px rgba(24, 38, 55, 0.14);
 }
 
 * {
@@ -59,10 +59,9 @@ body {
 
 :root[data-theme="light"] body {
   background:
-    radial-gradient(circle at 12% 10%, rgba(0, 135, 81, 0.08), transparent 18rem),
-    radial-gradient(circle at 86% 14%, rgba(0, 53, 128, 0.08), transparent 20rem),
-    radial-gradient(circle at 46% 90%, rgba(255, 205, 0, 0.1), transparent 22rem),
-    linear-gradient(180deg, #fbf6ee 0%, #f3ecde 100%);
+    linear-gradient(115deg, rgba(0, 135, 81, 0.08), transparent 28%),
+    linear-gradient(245deg, rgba(0, 53, 128, 0.08), transparent 30%),
+    linear-gradient(180deg, #f8fbff 0%, #eef3f8 100%);
   color: var(--text-main);
 }
 
@@ -108,20 +107,67 @@ canvas {
 }
 
 .x-cup-bg {
+  position: relative;
+  isolation: isolate;
   background:
-    radial-gradient(circle at 50% 48%, rgba(24, 227, 189, 0.08), transparent 24rem),
-    radial-gradient(circle at 16% 18%, rgba(255, 92, 57, 0.12), transparent 18rem),
-    radial-gradient(circle at 84% 14%, rgba(245, 165, 36, 0.08), transparent 16rem),
+    linear-gradient(115deg, rgba(0, 135, 81, 0.14), transparent 34%),
+    linear-gradient(245deg, rgba(206, 17, 38, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(245, 165, 36, 0.07), transparent 44%),
     linear-gradient(180deg, #05070d 0%, #030409 55%, #06080f 100%);
+}
+
+.x-cup-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    repeating-linear-gradient(105deg, rgba(0, 135, 81, 0.18) 0 2.2rem, rgba(0, 79, 46, 0.14) 2.2rem 4.4rem);
+  background-size: 56px 56px, 56px 56px, auto;
+  opacity: 0.42;
+}
+
+.x-cup-bg::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 8%, rgba(0, 53, 128, 0.18) 8% 16%, transparent 16% 34%, rgba(255, 205, 0, 0.14) 34% 42%, transparent 42% 64%, rgba(206, 17, 38, 0.16) 64% 72%, transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 35%, rgba(0, 0, 0, 0.18));
+  opacity: 0.5;
+}
+
+.x-cup-bg > * {
+  position: relative;
+  z-index: 1;
 }
 
 :root[data-theme="light"] .x-cup-bg {
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0.15)),
-    radial-gradient(circle at 14% 12%, rgba(0, 135, 81, 0.12), transparent 18rem),
-    radial-gradient(circle at 82% 14%, rgba(206, 17, 38, 0.12), transparent 18rem),
-    radial-gradient(circle at 56% 70%, rgba(255, 205, 0, 0.14), transparent 24rem),
-    linear-gradient(180deg, #fbf6ee 0%, #f3ecde 100%);
+    linear-gradient(115deg, rgba(0, 135, 81, 0.1), transparent 30%),
+    linear-gradient(245deg, rgba(206, 17, 38, 0.1), transparent 31%),
+    linear-gradient(180deg, rgba(255, 205, 0, 0.1), transparent 42%),
+    linear-gradient(180deg, #f8fbff 0%, #eef3f8 100%);
+}
+
+:root[data-theme="light"] .x-cup-bg::before {
+  background:
+    linear-gradient(90deg, rgba(15, 23, 42, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+    repeating-linear-gradient(105deg, rgba(0, 135, 81, 0.09) 0 2.2rem, rgba(0, 53, 128, 0.055) 2.2rem 4.4rem);
+  opacity: 0.55;
+}
+
+:root[data-theme="light"] .x-cup-bg::after {
+  background:
+    linear-gradient(90deg, transparent 0 9%, rgba(0, 53, 128, 0.12) 9% 17%, transparent 17% 35%, rgba(255, 205, 0, 0.12) 35% 43%, transparent 43% 65%, rgba(206, 17, 38, 0.11) 65% 73%, transparent 73%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent 48%, rgba(186, 198, 211, 0.18));
+  opacity: 0.75;
 }
 
 .x-reference-grid {
@@ -502,7 +548,7 @@ canvas {
 :root[data-theme="light"] .bg-black\/35,
 :root[data-theme="light"] .bg-black\/45,
 :root[data-theme="light"] .bg-black\/55 {
-  background-color: rgba(255, 251, 245, 0.92) !important;
+  background-color: rgba(255, 255, 255, 0.93) !important;
 }
 
 :root[data-theme="light"] .bg-black\/20,
@@ -517,13 +563,13 @@ canvas {
 :root[data-theme="light"] .bg-white\/\[0\.07\],
 :root[data-theme="light"] .bg-white\/\[0\.08\],
 :root[data-theme="light"] .bg-white\/10 {
-  background-color: rgba(255, 251, 245, 0.78) !important;
+  background-color: rgba(255, 255, 255, 0.82) !important;
 }
 
 :root[data-theme="light"] .border-white\/10,
 :root[data-theme="light"] .border-white\/12,
 :root[data-theme="light"] .border-white\/15 {
-  border-color: rgba(98, 89, 75, 0.14) !important;
+  border-color: rgba(32, 42, 54, 0.18) !important;
 }
 
 :root[data-theme="light"] .bg-white {
@@ -545,7 +591,7 @@ canvas {
 }
 
 :root[data-theme="light"] header.sticky {
-  background: rgba(251, 246, 238, 0.9) !important;
+  background: rgba(248, 251, 255, 0.92) !important;
 }
 
 :root[data-theme="light"] .x-reference-grid {

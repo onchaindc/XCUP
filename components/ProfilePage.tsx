@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
 import {
   Bell,
   Camera,
@@ -158,11 +159,11 @@ function ProfileHero({
     <section className="overflow-hidden rounded-lg border border-white/10 bg-black">
       <input ref={avatarInputRef} className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] ? void uploadProfileImage(event.target.files[0], "avatarUrl") : undefined} />
       <input ref={bannerInputRef} className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] ? void uploadProfileImage(event.target.files[0], "bannerUrl") : undefined} />
-      <div className="relative min-h-36 overflow-hidden border-b border-white/10 bg-black sm:min-h-40">
-        {profile.bannerUrl ? <img className="absolute inset-0 h-full w-full object-cover opacity-75" src={profile.bannerUrl} alt="" /> : null}
+      <div className="relative min-h-40 overflow-hidden border-b border-white/10 bg-black sm:min-h-48">
+        {profile.bannerUrl ? <Image className="object-cover opacity-75" src={profile.bannerUrl} alt="" fill sizes="100vw" unoptimized /> : null}
         <div className="absolute inset-0 opacity-70">
           <div className="x-reference-grid absolute inset-0 opacity-30" />
-          <div className="absolute -left-10 top-4 max-w-md text-6xl font-black leading-[0.82] tracking-normal text-white/10 sm:text-8xl" aria-hidden="true">focused_<br />verified_</div>
+          <div className="absolute -left-6 top-6 max-w-md text-5xl font-black leading-[0.9] tracking-normal text-white/10 sm:text-7xl" aria-hidden="true">focused_<br />verified_</div>
           <div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle,rgba(255,255,255,0.20)_1px,transparent_1px)] [background-size:7px_7px] opacity-30" aria-hidden="true" />
           <div className="absolute right-16 top-0 h-full w-28 -skew-x-12 bg-white/10" aria-hidden="true" />
         </div>
@@ -170,14 +171,14 @@ function ProfileHero({
           <Camera size={16} aria-hidden="true" />
         </button>
       </div>
-      <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_25rem]">
-        <div className="flex flex-wrap gap-4">
-          <button className="-mt-14 grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/15 bg-[#090d14] text-white shadow-2xl sm:h-28 sm:w-28" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Upload avatar">
-            {profile.avatarUrl ? <img className="h-full w-full object-cover" src={profile.avatarUrl} alt="" /> : <UserRound size={42} aria-hidden="true" />}
+      <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_25rem]">
+        <div className="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-start">
+          <button className="relative -mt-10 grid h-24 w-24 place-items-center overflow-hidden rounded-lg border border-white/15 bg-[#090d14] text-white shadow-2xl sm:-mt-14 sm:h-28 sm:w-28" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Upload avatar">
+            {profile.avatarUrl ? <Image className="object-cover" src={profile.avatarUrl} alt="" fill sizes="7rem" unoptimized /> : <UserRound size={42} aria-hidden="true" />}
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 pt-1">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Competitor identity</p>
-            <h1 className="mt-1 text-3xl font-black leading-none text-white sm:text-5xl">{profile.displayName || "Unnamed manager"}</h1>
+            <h1 className="mt-1 break-words text-3xl font-black leading-tight text-white sm:text-4xl xl:text-5xl">{profile.displayName || "Unnamed manager"}</h1>
             <p className="mt-2 text-sm font-bold text-white/54">{profile.username || "@manager"} - {profile.squadAffiliation || "No squad yet"}</p>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62">{profile.bio || "Set a short status in settings."}</p>
           </div>

@@ -4,11 +4,17 @@ import { motion } from "framer-motion";
 import {
   Activity,
   ArrowRight,
+  Bell,
   Brain,
+  CalendarClock,
   Bot,
   CloudSun,
+  CircleDot,
+  Flag,
   Gamepad2,
   Globe2,
+  ListChecks,
+  Loader2,
   Newspaper,
   Radio,
   Settings2,
@@ -23,7 +29,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
-import { eventStatusLabel, formatEventTime, formatLiveEventMatchup, type LiveSportEvent, type SportsNewsItem } from "@/lib/sports";
+import { eventStatusLabel, formatEventTime, formatLiveEventMatchup, type LiveMatchDetails, type LiveMatchPlayerEvent, type LiveSportEvent, type SportsNewsItem } from "@/lib/sports";
 import { xLayerTestnet } from "@/lib/arc";
 import type { Preferences, UserProfile } from "@/lib/app-store";
 import { useAppStore } from "@/lib/app-store";
@@ -52,11 +58,15 @@ export function XCupApp() {
   const [news, setNews] = useState<SportsNewsItem[]>([]);
   const [loadingFeeds, setLoadingFeeds] = useState(true);
   const [refreshingFeeds, setRefreshingFeeds] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const [matchDetails, setMatchDetails] = useState<LiveMatchDetails | null>(null);
+  const [loadingMatchDetails, setLoadingMatchDetails] = useState(false);
   const [feedError, setFeedError] = useState("");
   const [walletError, setWalletError] = useState("");
   const feedHydratedRef = useRef(false);
   const profile = useAppStore((state) => state.profile);
   const preferences = useAppStore((state) => state.preferences);
+  const activities = useAppStore((state) => state.activities);
   const updateProfile = useAppStore((state) => state.updateProfile);
   const updatePreferences = useAppStore((state) => state.updatePreferences);
   const { address, isConnected } = useAccount();
@@ -70,6 +80,7 @@ export function XCupApp() {
   });
   const liveEvents = events.filter((event) => event.status.state === "in");
   const featured = liveEvents[0] ?? events[0] ?? null;
+  const selectedEvent = events.find((event) => event.id === selectedEventId) ?? featured;
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
 
   useEffect(() => {
@@ -121,6 +132,56 @@ export function XCupApp() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedEvent || selectedEvent.status.state !== "in") {
+      setMatchDetails(null);
+      setLoadingMatchDetails(false);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadMatchDetails() {
+      setLoadingMatchDetails(true);
+      try {
+        const response = await fetch(`/api/sports/live/details?id=${encodeURIComponent(selectedEvent.id)}`, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Match detail feed is temporarily unavailable.");
+        }
+        const data = (await response.json()) as LiveMatchDetails;
+        if (!cancelled) {
+          setMatchDetails(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setMatchDetails({
+            id: selectedEvent.id,
+            generatedAt: new Date().toISOString(),
+            source: "Live match feed",
+            available: false,
+            message: "Detailed live stats could not be loaded for this match yet.",
+            headlineStats: [],
+            teamStats: [],
+            goals: [],
+            cards: [],
+            substitutions: [],
+            lineups: []
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingMatchDetails(false);
+        }
+      }
+    }
+
+    void loadMatchDetails();
+    const interval = window.setInterval(() => void loadMatchDetails(), 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [selectedEvent]);
+
   const stats = useMemo(
     () => [
       { label: "Live matches", value: String(liveEvents.length), icon: Radio },
@@ -130,6 +191,34 @@ export function XCupApp() {
     ],
     [events.length, isConnected, liveEvents.length, network.onArc, news.length]
   );
+
+  const displayedMatchDetails = matchDetails?.id === selectedEvent?.id ? matchDetails : null;
+
+  const notifications = useMemo(() => {
+    const items = [
+      {
+        title: refreshingFeeds ? "Live feed refreshing" : "Live feed online",
+        detail: `${events.length} fixtures tracked, ${liveEvents.length} live right now.`,
+        tone: liveEvents.length ? "live" : "neutral"
+      },
+      {
+        title: selectedEvent ? formatLiveEventMatchup(selectedEvent) : "Match center ready",
+        detail: selectedEvent?.status.state === "in" ? "Live stats are syncing every 30 seconds." : "Full stats unlock when the fixture is live.",
+        tone: selectedEvent?.status.state === "in" ? "live" : "neutral"
+      },
+      {
+        title: network.onArc ? "Wallet on X Layer" : "X Layer mainnet",
+        detail: isConnected ? "Wallet connected for arena actions." : "Connect wallet for predictions and squad actions.",
+        tone: network.onArc ? "live" : "neutral"
+      },
+      ...activities.slice(0, 3).map((activity) => ({
+        title: activity.title,
+        detail: activity.detail,
+        tone: activity.status === "failed" ? "danger" : "neutral"
+      }))
+    ];
+    return items.slice(0, 6);
+  }, [activities, events.length, isConnected, liveEvents.length, network.onArc, refreshingFeeds, selectedEvent]);
 
   async function connectWallet() {
     const connector = pickWalletConnector(connectors);
@@ -168,9 +257,11 @@ export function XCupApp() {
         />
         <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_25rem]">
           <div className="grid gap-4">
-            <LiveBoard events={events} loading={loadingFeeds} refreshing={refreshingFeeds} />
+            <LiveBoard events={events} loading={loadingFeeds} refreshing={refreshingFeeds} selectedEventId={selectedEvent?.id ?? ""} onSelect={setSelectedEventId} />
+            <MatchDetailsPanel event={selectedEvent} details={displayedMatchDetails} loading={loadingMatchDetails && selectedEvent?.status.state === "in"} />
           </div>
           <aside className="grid content-start gap-4">
+            <LiveNotifications items={notifications} />
             <ProfileSettingsPanel
               profile={profile}
               preferences={preferences}
@@ -426,7 +517,19 @@ function Hero({
   );
 }
 
-function LiveBoard({ events, loading, refreshing }: { events: LiveSportEvent[]; loading: boolean; refreshing: boolean }) {
+function LiveBoard({
+  events,
+  loading,
+  refreshing,
+  selectedEventId,
+  onSelect
+}: {
+  events: LiveSportEvent[];
+  loading: boolean;
+  refreshing: boolean;
+  selectedEventId: string;
+  onSelect: (eventId: string) => void;
+}) {
   return (
     <section id="matches" className="scroll-mt-28 rounded-lg border border-white/10 bg-white/[0.045] p-4">
       <div className="flex items-center justify-between gap-3">
@@ -444,7 +547,7 @@ function LiveBoard({ events, loading, refreshing }: { events: LiveSportEvent[]; 
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {loading && !events.length ? <SkeletonCards count={4} /> : null}
-        {!loading && events.length ? events.slice(0, 6).map((event) => <EventMiniCard key={event.id} event={event} />) : null}
+        {!loading && events.length ? events.slice(0, 6).map((event) => <EventMiniCard key={event.id} event={event} selected={event.id === selectedEventId} onSelect={() => onSelect(event.id)} />) : null}
         {!loading && !events.length ? (
           <div className="rounded-lg border border-white/10 bg-black/35 p-5 text-sm text-white/62 md:col-span-2">
             No live matches are available right now. Scheduled fixtures will appear here once the feed returns them.
@@ -455,11 +558,16 @@ function LiveBoard({ events, loading, refreshing }: { events: LiveSportEvent[]; 
   );
 }
 
-function EventMiniCard({ event }: { event: LiveSportEvent }) {
+function EventMiniCard({ event, selected, onSelect }: { event: LiveSportEvent; selected: boolean; onSelect: () => void }) {
   const isLive = event.status.state === "in";
   const scheduledTime = formatEventTime(event);
   return (
-    <article className="rounded-lg border border-white/10 bg-black/35 p-4">
+    <button
+      className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.07] ${selected ? "border-[#18e3bd]/45 bg-[#18e3bd]/10 shadow-[0_0_0_1px_rgba(24,227,189,0.14)]" : "border-white/10 bg-black/35"}`}
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/42">{event.league}</p>
@@ -475,7 +583,170 @@ function EventMiniCard({ event }: { event: LiveSportEvent }) {
         <span className="rounded-md bg-white/[0.06] p-2">{event.awayTeam.shortName} {event.awayTeam.score ?? ""}</span>
         <span className="rounded-md bg-white/[0.06] p-2">{event.homeTeam.shortName} {event.homeTeam.score ?? ""}</span>
       </div>
-    </article>
+      <p className="mt-3 flex items-center gap-2 text-xs font-bold text-white/46">
+        {isLive ? <CircleDot size={13} className="text-[#18e3bd]" aria-hidden="true" /> : <CalendarClock size={13} aria-hidden="true" />}
+        {isLive ? "Open live match stats" : "Stats unlock live"}
+      </p>
+    </button>
+  );
+}
+
+function MatchDetailsPanel({ event, details, loading }: { event: LiveSportEvent | null; details: LiveMatchDetails | null; loading: boolean }) {
+  if (!event) {
+    return null;
+  }
+
+  const isLive = event.status.state === "in";
+  return (
+    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Match Center</p>
+          <h2 className="mt-1 text-2xl font-black text-white">{formatLiveEventMatchup(event)}</h2>
+          <p className="mt-2 text-sm leading-6 text-white/58">
+            {isLive ? `${event.league} - ${event.status.detail}` : "Detailed corners, possession, scorers, assists, cards, substitutions, and lineups appear once this fixture is live."}
+          </p>
+        </div>
+        <span className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-black uppercase ${isLive ? "border-[#18e3bd]/30 bg-[#18e3bd]/10 text-[#80ffe2]" : "border-white/10 bg-white/[0.06] text-white/58"}`}>
+          {loading ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Radio size={14} aria-hidden="true" />}
+          {isLive ? "Live stats" : "Locked"}
+        </span>
+      </div>
+
+      {!isLive ? (
+        <div className="mt-4 rounded-lg border border-white/10 bg-black/35 p-4 text-sm leading-6 text-white/62">
+          Full match intelligence is only requested for active live matches, so pre-match cards stay clean and honest until the whistle goes.
+        </div>
+      ) : null}
+
+      {isLive ? (
+        <div className="mt-4 grid gap-4">
+          {loading ? (
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/35 p-4 text-sm font-bold text-white/62">
+              <Loader2 size={16} className="animate-spin text-[#18e3bd]" aria-hidden="true" />
+              Syncing live match feed...
+            </div>
+          ) : null}
+          {details?.message ? <p className="rounded-lg border border-[#f5a524]/25 bg-[#f5a524]/10 p-3 text-sm font-bold text-[#ffd48a]">{details.message}</p> : null}
+          {details?.headlineStats.length ? (
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {details.headlineStats.map((stat) => <StatPill key={stat.label} label={stat.label} away={stat.away} home={stat.home} />)}
+            </div>
+          ) : null}
+          {details?.teamStats.length ? (
+            <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Team stats</p>
+                <ListChecks size={16} className="text-[#18e3bd]" aria-hidden="true" />
+              </div>
+              <div className="mt-3 grid gap-2">
+                {details.teamStats.slice(0, 14).map((stat) => <StatRow key={stat.label} label={stat.label} away={stat.away} home={stat.home} />)}
+              </div>
+            </div>
+          ) : null}
+          <div className="grid gap-4 lg:grid-cols-3">
+            <PlayerEventList title="Goals and assists" empty="No scoring events in the live feed yet." events={details?.goals ?? []} />
+            <PlayerEventList title="Cards" empty="No cards reported yet." events={details?.cards ?? []} />
+            <PlayerEventList title="Substitutions" empty="No substitutions reported yet." events={details?.substitutions ?? []} />
+          </div>
+          {details?.lineups.length ? <LineupGrid lineups={details.lineups} /> : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function StatPill({ label, away, home }: { label: string; away: string; home: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/35 p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/42">{label}</p>
+      <div className="mt-2 flex items-center justify-between gap-3 text-lg font-black text-white">
+        <span>{away}</span>
+        <span className="text-xs text-white/32">VS</span>
+        <span>{home}</span>
+      </div>
+    </div>
+  );
+}
+
+function StatRow({ label, away, home }: { label: string; away: string; home: string }) {
+  return (
+    <div className="grid grid-cols-[4rem_minmax(0,1fr)_4rem] items-center gap-3 rounded-md bg-white/[0.04] px-3 py-2 text-sm">
+      <span className="font-black text-white">{away}</span>
+      <span className="truncate text-center text-xs font-bold uppercase tracking-[0.08em] text-white/46">{label}</span>
+      <span className="text-right font-black text-white">{home}</span>
+    </div>
+  );
+}
+
+function PlayerEventList({ title, empty, events }: { title: string; empty: string; events: LiveMatchPlayerEvent[] }) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-black/35 p-4">
+      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#18e3bd]">{title}</p>
+      <div className="mt-3 grid gap-2">
+        {events.slice(0, 8).map((event) => (
+          <div key={event.id} className="rounded-md bg-white/[0.04] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-black text-white">{event.player}</p>
+              <span className="text-xs font-black text-[#f5a524]">{event.minute}</span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-white/52">
+              {event.assist ? `Assist: ${event.assist}` : event.detail || event.team || "Live event"}
+            </p>
+          </div>
+        ))}
+        {!events.length ? <p className="text-sm leading-6 text-white/52">{empty}</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function LineupGrid({ lineups }: { lineups: Array<{ team: string; starters: string[]; substitutes: string[] }> }) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-black/35 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Lineups and bench</p>
+        <Flag size={16} className="text-[#18e3bd]" aria-hidden="true" />
+      </div>
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {lineups.map((lineup) => (
+          <div key={lineup.team} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+            <p className="font-black text-white">{lineup.team}</p>
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-white/38">Starters</p>
+            <p className="mt-1 text-sm leading-6 text-white/62">{lineup.starters.length ? lineup.starters.join(", ") : "Awaiting lineup"}</p>
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-white/38">Substitutes</p>
+            <p className="mt-1 text-sm leading-6 text-white/62">{lineup.substitutes.length ? lineup.substitutes.join(", ") : "Awaiting bench"}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LiveNotifications({ items }: { items: Array<{ title: string; detail: string; tone: string }> }) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Live Notifications</p>
+          <h2 className="mt-1 text-xl font-black text-white">Arena pulse</h2>
+        </div>
+        <Bell size={17} className="text-[#18e3bd]" aria-hidden="true" />
+      </div>
+      <div className="mt-4 grid gap-2">
+        {items.map((item) => (
+          <div key={`${item.title}-${item.detail}`} className="rounded-lg border border-white/10 bg-black/35 p-3">
+            <div className="flex items-start gap-2">
+              <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${item.tone === "live" ? "bg-[#18e3bd]" : item.tone === "danger" ? "bg-[#ff5c39]" : "bg-[#f5a524]"}`} />
+              <div>
+                <p className="text-sm font-black text-white">{item.title}</p>
+                <p className="mt-1 text-xs leading-5 text-white/52">{item.detail}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
