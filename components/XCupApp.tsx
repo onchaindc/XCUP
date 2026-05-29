@@ -31,6 +31,8 @@ import { applyTheme } from "@/lib/theme";
 import { useNetworkStatus } from "@/lib/use-network-status";
 import { errorMessage, shortAddress } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
+import { AppAudioButton } from "@/components/AppAudioButton";
+import { WorldCupCountdown } from "@/components/WorldCupCountdown";
 
 const topNav = [
   { label: "Matches", href: "/markets", icon: Radio },
@@ -226,6 +228,8 @@ export function TopHeader({
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          <WorldCupCountdown />
+          <AppAudioButton />
           <button
             className="grid h-10 min-w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] px-2 text-xs font-black text-white/70 transition hover:bg-white/10 hover:text-white sm:flex sm:gap-2 sm:px-3"
             type="button"
