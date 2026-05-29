@@ -25,6 +25,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="wc-theme">
+        {/* WC2026 Background Theme Layer */}
+        <div className="wc-bg-layer" aria-hidden="true">
+          <div className="wc-arches" />
+          <div className="wc-arches-tr" />
+          <div className="wc-trophy" />
+          <div className="wc-top-bar" />
+        </div>
         <ThemeInit />
         <script
           dangerouslySetInnerHTML={{

@@ -20,7 +20,9 @@ const config: Config = {
         gain: "#39d98a",
         loss: "#ff5470",
         wcgold: "#C9A84C",
+        wcgold2: "#F4D03F",
         wcred: "#C1121F",
+        wcorange: "#E85D04",
         wcglow: "rgba(201, 168, 76, 0.12)"
       },
       boxShadow: {
