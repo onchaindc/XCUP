@@ -764,3 +764,8 @@ body > div:not([aria-hidden]) {
   position: relative;
   z-index: 1;
 }
+
+/* WC2026 main poster background must remain visible behind pages */
+.wc-theme .x-cup-bg {
+  background: transparent !important;
+}
