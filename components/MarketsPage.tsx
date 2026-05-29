@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, isAddress, keccak256, parseEther, toBytes } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect, useWriteContract } from "wagmi";
-import { formatEventTime, formatLiveEventMatchup, type LiveSportEvent } from "@/lib/sports";
+import { formatEventTime, formatLiveEventMatchup, type LiveSportEvent, type PreviousFootballMatch } from "@/lib/sports";
 import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
@@ -46,9 +46,11 @@ const xCupArenaAbi = [
 
 export function MarketsPage() {
   const [events, setEvents] = useState<LiveSportEvent[]>([]);
+  const [previousMatches, setPreviousMatches] = useState<PreviousFootballMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [view, setView] = useState<"live" | "previous">("live");
   const [sportFilter, setSportFilter] = useState("All");
   const [slip, setSlip] = useState<Slip | null>(null);
   const ticketsHydratedRef = useRef(false);
@@ -106,8 +108,11 @@ export function MarketsPage() {
           throw new Error("Live markets feed is unavailable.");
         }
         const data = (await response.json()) as { events: LiveSportEvent[] };
+        const previousResponse = await fetch("/api/sports/previous", { cache: "no-store" });
+        const previousData = previousResponse.ok ? ((await previousResponse.json()) as { matches: PreviousFootballMatch[] }) : { matches: [] };
         if (!cancelled) {
           setEvents(data.events);
+          setPreviousMatches(previousData.matches);
           hydratedRef.current = true;
         }
       } catch (loadError) {
@@ -183,6 +188,20 @@ export function MarketsPage() {
               </div>
               {refreshing ? <p className="mt-4 rounded-lg border border-[#18e3bd]/20 bg-[#18e3bd]/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-[#80ffe2]">Refreshing</p> : null}
               <div className="mt-5 flex flex-wrap gap-2">
+                <button
+                  className={`rounded-lg border px-3 py-2 text-xs font-black transition ${view === "live" ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.05] text-white/62 hover:bg-white/10 hover:text-white"}`}
+                  type="button"
+                  onClick={() => setView("live")}
+                >
+                  Live matches
+                </button>
+                <button
+                  className={`rounded-lg border px-3 py-2 text-xs font-black transition ${view === "previous" ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.05] text-white/62 hover:bg-white/10 hover:text-white"}`}
+                  type="button"
+                  onClick={() => setView("previous")}
+                >
+                  Previous matches
+                </button>
                 {sports.map((sport) => (
                   <button
                     key={sport}
@@ -196,21 +215,30 @@ export function MarketsPage() {
               </div>
             </header>
             <section className="grid gap-3">
-              {loading && !events.length ? <LoadingRows /> : null}
+              {loading && !events.length && !previousMatches.length ? <LoadingRows /> : null}
               {!loading && error ? (
                 <div className="rounded-lg border border-[#ff5c39]/25 bg-[#ff5c39]/10 p-4 text-sm font-bold text-[#ffb09d]">
                   {error}
                 </div>
               ) : null}
-              {!loading && !error && !filteredEvents.length ? (
+              {!loading && !error && view === "live" && !filteredEvents.length ? (
                 <div className="rounded-lg border border-white/10 bg-white/[0.045] p-6 text-center">
                   <AlertCircle className="mx-auto text-white/44" size={30} aria-hidden="true" />
-                  <p className="mt-3 font-black text-white">No matching fixtures in the next 2 days.</p>
+                  <p className="mt-3 font-black text-white">No matching fixtures in the next 7 days.</p>
                   <p className="mt-2 text-sm leading-6 text-white/58">Try another sport filter or refresh the board.</p>
                 </div>
               ) : null}
-              {!loading && filteredEvents.map((event) => (
+              {!loading && !error && view === "previous" && !previousMatches.length ? (
+                <div className="rounded-lg border border-white/10 bg-white/[0.045] p-6 text-center">
+                  <AlertCircle className="mx-auto text-white/44" size={30} aria-hidden="true" />
+                  <p className="mt-3 font-black text-white">No finished football matches found in the last 2 days.</p>
+                </div>
+              ) : null}
+              {!loading && view === "live" && filteredEvents.map((event) => (
                 <MarketEventCard key={event.id} event={event} onPick={(pick) => setSlip({ event, pick, amount: "" })} />
+              ))}
+              {!loading && view === "previous" && previousMatches.map((match) => (
+                <PreviousMatchCard key={match.id} match={match} />
               ))}
             </section>
           </div>
@@ -253,8 +281,8 @@ function MarketEventCard({ event, onPick }: { event: LiveSportEvent; onPick: (pi
         </span>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <TeamBlock label="Away" name={event.awayTeam.name} score={event.awayTeam.score} />
-        <TeamBlock label="Home" name={event.homeTeam.name} score={event.homeTeam.score} />
+        <TeamBlock label="Away" name={event.awayTeam.name} score={event.awayTeam.score} logo={event.awayTeam.logo} />
+        <TeamBlock label="Home" name={event.homeTeam.name} score={event.homeTeam.score} logo={event.homeTeam.logo} />
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         {[awayPick, homePick, event.sport === "Football" ? "Draw" : "OT / close finish"].map((pick) => (
@@ -275,13 +303,78 @@ function MarketEventCard({ event, onPick }: { event: LiveSportEvent; onPick: (pi
   );
 }
 
-function TeamBlock({ label, name, score }: { label: string; name: string; score?: string }) {
+function TeamBlock({ label, name, score, logo }: { label: string; name: string; score?: string; logo?: string }) {
+  const src = teamLogoSrc(name, logo);
   return (
     <div className="rounded-lg border border-white/10 bg-black/35 p-3">
       <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/38">{label}</p>
-      <p className="mt-2 font-black text-white">{name}</p>
+      <div className="mt-2 flex items-center gap-3">
+        {src ? <img className="h-9 w-9 rounded-md object-contain" src={src} alt="" /> : null}
+        <p className="font-black text-white">{name}</p>
+      </div>
       {score ? <p className="mt-1 text-2xl font-black text-[#18e3bd]">{score}</p> : null}
     </div>
+  );
+}
+
+function teamLogoSrc(name: string, logo?: string) {
+  if (logo) return logo;
+  const flags: Record<string, string> = {
+    argentina: "ar",
+    belgium: "be",
+    brazil: "br",
+    croatia: "hr",
+    england: "gb-eng",
+    france: "fr",
+    germany: "de",
+    ghana: "gh",
+    italy: "it",
+    mexico: "mx",
+    morocco: "ma",
+    netherlands: "nl",
+    nigeria: "ng",
+    portugal: "pt",
+    senegal: "sn",
+    spain: "es",
+    "united states": "us",
+    usa: "us"
+  };
+  const code = flags[name.toLowerCase()];
+  return code ? `https://flagcdn.com/w80/${code}.png` : "";
+}
+
+function PreviousMatchCard({ match }: { match: PreviousFootballMatch }) {
+  return (
+    <motion.article className="rounded-lg border border-white/10 bg-white/[0.045] p-4" layout>
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">{match.league}</p>
+      <h2 className="mt-2 text-2xl font-black text-white">{match.awayTeam.shortName} VS {match.homeTeam.shortName}</h2>
+      <p className="mt-2 text-sm text-white/58">{match.status.detail} - {formatEventTime({ date: match.date })}</p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <TeamBlock label="Away" name={match.awayTeam.name} score={match.awayTeam.score} logo={match.awayTeam.logo} />
+        <TeamBlock label="Home" name={match.homeTeam.name} score={match.homeTeam.score} logo={match.homeTeam.logo} />
+      </div>
+      {match.goals.length ? (
+        <div className="mt-4 grid gap-2">
+          {match.goals.slice(0, 6).map((goal) => (
+            <div key={goal.id} className="rounded-lg border border-white/10 bg-black/35 p-3">
+              <p className="font-black text-white">{goal.athlete ?? goal.team ?? "Scoring play"} {goal.minute ? `- ${goal.minute}` : ""}</p>
+              <p className="mt-1 text-sm text-white/58">{goal.text}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {match.stats.length ? (
+        <div className="mt-4 grid gap-2">
+          {match.stats.slice(0, 8).map((stat) => (
+            <div key={stat.label} className="grid grid-cols-[4rem_1fr_4rem] items-center gap-3 rounded-lg border border-white/10 bg-black/35 p-3 text-sm">
+              <p className="text-right font-black text-white">{stat.away}</p>
+              <p className="text-center font-bold text-white/58">{stat.label}</p>
+              <p className="font-black text-white">{stat.home}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </motion.article>
   );
 }
 

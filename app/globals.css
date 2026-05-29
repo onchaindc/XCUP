@@ -577,3 +577,81 @@ canvas {
     max-width: 100%;
   }
 }
+
+/* -- World Cup Trophy Dusk Theme -- */
+
+/* Ghosted ball watermark behind entire app */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='90' fill='none' stroke='%23C9A84C' stroke-width='2' opacity='0.07'/%3E%3Ccircle cx='100' cy='100' r='65' fill='none' stroke='%23C9A84C' stroke-width='1' opacity='0.05'/%3E%3Cpolygon points='100,20 115,60 155,60 124,84 135,124 100,100 65,124 76,84 45,60 85,60' fill='none' stroke='%23C9A84C' stroke-width='1.5' opacity='0.06'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 520px 520px;
+  background-position: top 10% right -60px;
+  opacity: 1;
+}
+
+/* Warm gold ambient glow - top right only */
+body::after {
+  content: "";
+  position: fixed;
+  top: -120px;
+  right: -120px;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure all page content sits above the decorative layers */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Navbar gold bottom border */
+nav, header {
+  border-bottom: 1px solid transparent;
+  background-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(201, 168, 76, 0.25) 30%,
+    rgba(201, 168, 76, 0.25) 70%,
+    transparent 100%
+  );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* Match/game cards - gold top shimmer on hover */
+[class*="card"], [class*="match"], [class*="Card"], [class*="Match"] {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+[class*="card"]:hover, [class*="match"]:hover,
+[class*="Card"]:hover, [class*="Match"]:hover {
+  border-top-color: rgba(201, 168, 76, 0.35) !important;
+  box-shadow: 0 -1px 0 0 rgba(201, 168, 76, 0.2), 0 18px 55px rgba(0,0,0,0.35);
+}
+
+/* LIVE badge - add warm pulse glow */
+@keyframes wc-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(193, 18, 31, 0.4); }
+  50%       { box-shadow: 0 0 0 5px rgba(193, 18, 31, 0); }
+}
+[class*="live"], [class*="Live"], .live-badge {
+  animation: wc-live-pulse 2s ease-in-out infinite;
+}
+
+/* Loader screen - ensure football geometry uses WC gold stroke */
+[class*="loader"] svg circle,
+[class*="loader"] svg path,
+[class*="loader"] svg line,
+[class*="Loader"] svg circle,
+[class*="Loader"] svg path {
+  stroke: #C9A84C !important;
+}

@@ -18,11 +18,15 @@ const config: Config = {
         arcblue: "#18e3bd",
         arcpurple: "#ff5c39",
         gain: "#39d98a",
-        loss: "#ff5470"
+        loss: "#ff5470",
+        wcgold: "#C9A84C",
+        wcred: "#C1121F",
+        wcglow: "rgba(201, 168, 76, 0.12)"
       },
       boxShadow: {
         glow: "0 24px 90px rgba(24, 227, 189, 0.18)",
-        soft: "0 18px 55px rgba(0, 0, 0, 0.35)"
+        soft: "0 18px 55px rgba(0, 0, 0, 0.35)",
+        trophy: "0 0 60px 0 rgba(201, 168, 76, 0.15)"
       }
     }
   },

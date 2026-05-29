@@ -69,8 +69,8 @@ export function LiveMatchPage({ id }: { id: string }) {
                   <p className="mt-3 text-sm leading-6 text-white/60">{event.league} - {event.status.detail}{event.status.clock ? ` - ${event.status.clock}` : ""}</p>
                 </div>
                 <div className="grid min-w-64 grid-cols-2 gap-2">
-                  <ScoreBlock label="Away" name={event.awayTeam.shortName} score={event.awayTeam.score} />
-                  <ScoreBlock label="Home" name={event.homeTeam.shortName} score={event.homeTeam.score} />
+                  <ScoreBlock label="Away" name={event.awayTeam.shortName} score={event.awayTeam.score} logo={event.awayTeam.logo} />
+                  <ScoreBlock label="Home" name={event.homeTeam.shortName} score={event.homeTeam.score} logo={event.homeTeam.logo} />
                 </div>
               </div>
               <p className="mt-4 text-xs font-bold text-white/42">Source: {details.source}. Refreshes every 20 seconds while open.</p>
@@ -117,14 +117,44 @@ export function LiveMatchPage({ id }: { id: string }) {
   );
 }
 
-function ScoreBlock({ label, name, score }: { label: string; name: string; score?: string }) {
+function ScoreBlock({ label, name, score, logo }: { label: string; name: string; score?: string; logo?: string }) {
+  const src = teamLogoSrc(name, logo);
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.045] p-3">
       <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/38">{label}</p>
-      <p className="mt-1 truncate text-sm font-black text-white">{name}</p>
+      <div className="mt-1 flex items-center gap-2">
+        {src ? <img className="h-8 w-8 rounded-md object-contain" src={src} alt="" /> : null}
+        <p className="truncate text-sm font-black text-white">{name}</p>
+      </div>
       <p className="mt-2 text-3xl font-black text-[#18e3bd]">{score ?? "-"}</p>
     </div>
   );
+}
+
+function teamLogoSrc(name: string, logo?: string) {
+  if (logo) return logo;
+  const flags: Record<string, string> = {
+    argentina: "ar",
+    belgium: "be",
+    brazil: "br",
+    croatia: "hr",
+    england: "gb-eng",
+    france: "fr",
+    germany: "de",
+    ghana: "gh",
+    italy: "it",
+    mexico: "mx",
+    morocco: "ma",
+    netherlands: "nl",
+    nigeria: "ng",
+    portugal: "pt",
+    senegal: "sn",
+    spain: "es",
+    "united states": "us",
+    usa: "us"
+  };
+  const code = flags[name.toLowerCase()];
+  return code ? `https://flagcdn.com/w80/${code}.png` : "";
 }
 
 function StatRow({ label, away, home }: { label: string; away: string; home: string }) {

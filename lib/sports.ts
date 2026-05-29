@@ -90,6 +90,23 @@ export type LiveMatchDetails = {
   lineups: LiveMatchTeamLineup[];
 };
 
+export type PreviousFootballMatch = {
+  id: string;
+  league: string;
+  date: string;
+  venue?: string;
+  homeTeam: LiveSportEvent["homeTeam"];
+  awayTeam: LiveSportEvent["awayTeam"];
+  status: LiveSportEvent["status"];
+  stats: LiveMatchStat[];
+  goals: LiveMatchScoringPlay[];
+};
+
+export type PreviousFootballResponse = {
+  generatedAt: string;
+  matches: PreviousFootballMatch[];
+};
+
 export type SportsNewsResponse = {
   generatedAt: string;
   items: SportsNewsItem[];

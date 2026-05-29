@@ -106,6 +106,15 @@ function splitEventId(id: string) {
   };
 }
 
+function espnDateRange(daysBack = 2, daysForward = 2) {
+  const now = new Date();
+  const start = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+  const end = new Date(now.getTime() + daysForward * 24 * 60 * 60 * 1000);
+  const format = (date: Date) =>
+    `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, "0")}${String(date.getUTCDate()).padStart(2, "0")}`;
+  return `${format(start)}-${format(end)}`;
+}
+
 async function fetchJson<T>(url: string) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FEED_TIMEOUT_MS);
@@ -118,6 +127,17 @@ async function fetchJson<T>(url: string) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function fetchEvent(slug: string, eventId: string) {
+  const direct = await fetchJson<{ events?: EspnEvent[] }>(`https://site.api.espn.com/apis/site/v2/sports/${slug}/scoreboard?event=${encodeURIComponent(eventId)}&limit=1`);
+  const directEvent = direct?.events?.find((item) => item.id === eventId) ?? direct?.events?.[0];
+  if (directEvent?.id === eventId) {
+    return directEvent;
+  }
+
+  const dated = await fetchJson<{ events?: EspnEvent[] }>(`https://site.api.espn.com/apis/site/v2/sports/${slug}/scoreboard?dates=${espnDateRange()}&limit=200`);
+  return dated?.events?.find((item) => item.id === eventId) ?? directEvent;
 }
 
 function teamFrom(competitor?: EspnCompetitor) {
@@ -173,6 +193,14 @@ function normalizeStats(home?: EspnCompetitor, away?: EspnCompetitor, summary?: 
     .filter((stat) => stat.label && (stat.home !== "-" || stat.away !== "-"));
 }
 
+function fallbackScoreStats(home?: EspnCompetitor, away?: EspnCompetitor): LiveMatchStat[] {
+  const stats: LiveMatchStat[] = [];
+  if (home?.score || away?.score) {
+    stats.push({ label: "Score", home: home?.score ?? "-", away: away?.score ?? "-" });
+  }
+  return stats;
+}
+
 function playerFrom(item: EspnPlayer): LiveMatchPlayer {
   return {
     id: item.athlete?.id,
@@ -216,8 +244,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing live match id." }, { status: 400 });
   }
 
-  const scoreboard = await fetchJson<{ events?: EspnEvent[] }>(`https://site.api.espn.com/apis/site/v2/sports/${parts.slug}/scoreboard?event=${encodeURIComponent(parts.eventId)}&limit=1`);
-  const event = scoreboard?.events?.find((item) => item.id === parts.eventId) ?? scoreboard?.events?.[0];
+  const event = await fetchEvent(parts.slug, parts.eventId);
   const normalizedEvent = event ? eventFrom(id, parts.slug, event) : undefined;
 
   if (!event || normalizedEvent?.status.state !== "in") {
@@ -249,7 +276,10 @@ export async function GET(request: NextRequest) {
     source: "ESPN live summary",
     available: true,
     event: normalizedEvent,
-    stats: normalizeStats(home, away, safeSummary),
+    stats: (() => {
+      const stats = normalizeStats(home, away, safeSummary);
+      return stats.length ? stats : fallbackScoreStats(home, away);
+    })(),
     goals: normalizeGoals(event, safeSummary),
     lineups: normalizeLineups(competitors, safeSummary)
   } satisfies LiveMatchDetails);

@@ -35,7 +35,7 @@ const feeds = [
 
 const priorityClubs = ["real madrid", "barcelona", "arsenal", "manchester city", "madrid", "barca", "city", "ajax"];
 const FEED_TIMEOUT_MS = 3500;
-const SCHEDULE_DAYS = 2;
+const SCHEDULE_DAYS = 7;
 
 type EspnTeam = {
   id?: string;
@@ -184,7 +184,8 @@ export async function GET() {
         return true;
       }
       const eventTime = new Date(event.date).getTime();
-      return event.status.state === "pre" && eventTime >= now - 30 * 60 * 1000 && eventTime <= soon;
+      const isPriorityFootball = event.league.includes("World Cup") || event.league.includes("Friendlies");
+      return event.status.state === "pre" && eventTime >= now - 30 * 60 * 1000 && eventTime <= (isPriorityFootball ? now + SCHEDULE_DAYS * 24 * 60 * 60 * 1000 : soon);
     })
     .filter((event) => {
       if (seen.has(event.id)) {

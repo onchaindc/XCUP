@@ -472,8 +472,8 @@ function EventMiniCard({ event }: { event: LiveSportEvent }) {
       <p className="mt-3 text-sm text-white/58">{event.status.detail}</p>
       {scheduledTime ? <p className="mt-1 text-xs font-bold text-white/42">{isLive ? "Started" : "Kickoff"}: {scheduledTime}</p> : null}
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-black text-white">
-        <span className="rounded-md bg-white/[0.06] p-2">{event.awayTeam.shortName} {event.awayTeam.score ?? ""}</span>
-        <span className="rounded-md bg-white/[0.06] p-2">{event.homeTeam.shortName} {event.homeTeam.score ?? ""}</span>
+        <TeamMini name={event.awayTeam.shortName} score={event.awayTeam.score} logo={event.awayTeam.logo} />
+        <TeamMini name={event.homeTeam.shortName} score={event.homeTeam.score} logo={event.homeTeam.logo} />
       </div>
       {isLive ? (
         <Link className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-[#18e3bd]/30 bg-[#18e3bd]/10 px-3 py-2 text-sm font-black text-[#80ffe2] transition hover:bg-[#18e3bd]/18" href={`/matches/live?id=${encodeURIComponent(event.id)}`}>
@@ -482,6 +482,15 @@ function EventMiniCard({ event }: { event: LiveSportEvent }) {
         </Link>
       ) : null}
     </article>
+  );
+}
+
+function TeamMini({ name, score, logo }: { name: string; score?: string; logo?: string }) {
+  return (
+    <span className="flex items-center gap-2 rounded-md bg-white/[0.06] p-2">
+      {logo ? <img className="h-6 w-6 rounded object-contain" src={logo} alt="" /> : null}
+      <span className="truncate">{name} {score ?? ""}</span>
+    </span>
   );
 }
 
