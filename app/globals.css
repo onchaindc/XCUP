@@ -756,3 +756,11 @@ body > div > * {
   position: relative;
   z-index: 1;
 }
+
+/* WC2026 — ensure all app content renders above bg layer */
+#__next,
+[data-nextjs-scroll-focus-boundary],
+body > div:not([aria-hidden]) {
+  position: relative;
+  z-index: 1;
+}

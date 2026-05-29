@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/app/providers";
 import { ThemeInit } from "@/components/ThemeInit";
+import WCBackground from "@/components/WCBackground";
 
 export const metadata: Metadata = {
   title: "X Cup Arena",
@@ -25,13 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="wc-theme">
-        {/* WC2026 Background Theme Layer */}
-        <div className="wc-bg-layer" aria-hidden="true">
-          <div className="wc-arches" />
-          <div className="wc-arches-tr" />
-          <div className="wc-trophy" />
-          <div className="wc-top-bar" />
-        </div>
+        <WCBackground />
         <ThemeInit />
         <script
           dangerouslySetInnerHTML={{
