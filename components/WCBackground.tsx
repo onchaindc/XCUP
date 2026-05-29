@@ -220,6 +220,19 @@ export default function WCBackground() {
               "radial-gradient(circle at 50% 48%, transparent 0 22%, rgba(5,7,13,0.18) 48%, rgba(5,7,13,0.86) 100%), linear-gradient(180deg, rgba(5,7,13,0.18), rgba(5,7,13,0.72))",
           }}
         />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: "50%",
+            width: "min(100vw, 92rem)",
+            transform: "translateX(-50%)",
+            background:
+              "radial-gradient(circle at 50% 48%, rgba(24, 227, 189, 0.08), transparent 24rem), radial-gradient(circle at 16% 18%, rgba(255, 92, 57, 0.12), transparent 18rem), radial-gradient(circle at 84% 14%, rgba(245, 165, 36, 0.08), transparent 16rem), linear-gradient(180deg, #05070d 0%, #030409 55%, #06080f 100%)",
+            boxShadow: "0 0 80px 80px rgba(5, 7, 13, 0.42)",
+          }}
+        />
       </div>
     </>
   );
