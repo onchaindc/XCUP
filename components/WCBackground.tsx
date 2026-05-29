@@ -1,118 +1,226 @@
+const layerStyle = {
+  position: "fixed",
+  inset: 0,
+  pointerEvents: "none",
+  zIndex: 0,
+  overflow: "hidden",
+  background:
+    "linear-gradient(180deg, rgba(5,7,13,0.18), rgba(5,7,13,0.62)), #05070d",
+} as const;
+
+const tileStyles = [
+  {
+    background:
+      "repeating-radial-gradient(circle at 50% 50%, #00d64f 0 5px, #1825c8 6px 12px, #05070d 13px 19px)",
+  },
+  {
+    background:
+      "linear-gradient(90deg, #00e6ff 0 18%, #00ce4d 18% 34%, #e7ff00 34% 47%, #00e6ff 47% 62%, #00ce4d 62% 79%, #e7ff00 79% 100%)",
+  },
+  {
+    background:
+      "linear-gradient(135deg, #ee174c 0 26%, #25d9ff 26% 44%, #5d13a6 44% 62%, #00c44f 62% 100%)",
+  },
+  {
+    background:
+      "repeating-linear-gradient(0deg, #173079 0 5px, transparent 5px 12px), repeating-radial-gradient(ellipse at 40% 50%, transparent 0 13px, #f5a524 14px 16px, transparent 17px 30px), #171747",
+  },
+  {
+    background:
+      "linear-gradient(135deg, #00c44f 0 25%, #b9ff00 25% 50%, #00c44f 50% 75%, #b9ff00 75% 100%)",
+    backgroundSize: "34px 34px",
+  },
+  {
+    background:
+      "linear-gradient(135deg, #ee174c 0 22%, #ff8b71 22% 40%, #1666e8 40% 58%, #7912b8 58% 76%, #00c44f 76% 100%)",
+  },
+  {
+    background:
+      "repeating-linear-gradient(90deg, #e7ff00 0 10px, #1f91ff 10px 20px, #101a70 20px 30px, #00c44f 30px 40px)",
+  },
+  {
+    background:
+      "linear-gradient(45deg, #5d13a6 0 20%, #082747 20% 42%, #00c44f 42% 58%, #0a174c 58% 78%, #7415b5 78% 100%)",
+  },
+  {
+    background:
+      "linear-gradient(135deg, #22d7ff 0 25%, #052a4f 25% 50%, #00c44f 50% 75%, #f6ff00 75% 100%)",
+  },
+] as const;
+
+function TrophyMark() {
+  return (
+    <svg viewBox="0 0 100 160" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
+      <defs>
+        <linearGradient id="wc-gold" x1="20%" x2="80%" y1="0%" y2="100%">
+          <stop offset="0%" stopColor="#fff0a3" />
+          <stop offset="35%" stopColor="#d6a63b" />
+          <stop offset="70%" stopColor="#8b5b18" />
+          <stop offset="100%" stopColor="#f8d873" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="50" cy="38" rx="30" ry="24" fill="url(#wc-gold)" />
+      <path d="M21 29 Q8 37 12 53 Q17 65 29 58" fill="none" stroke="#f6d775" strokeWidth="5" />
+      <path d="M79 29 Q92 37 88 53 Q83 65 71 58" fill="none" stroke="#f6d775" strokeWidth="5" />
+      <path d="M36 56 C39 68 42 84 42 101 H58 C58 84 61 68 64 56 Z" fill="url(#wc-gold)" />
+      <rect x="29" y="101" width="42" height="12" rx="4" fill="url(#wc-gold)" />
+      <rect x="21" y="113" width="58" height="10" rx="3" fill="#d6a63b" />
+      <ellipse cx="50" cy="38" rx="15" ry="16" fill="none" stroke="#8b5b18" strokeWidth="2" opacity="0.55" />
+    </svg>
+  );
+}
+
 export default function WCBackground() {
   return (
     <>
-      {/* Fixed full-screen WC2026 decorative layer — pure visual, no interactivity */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          pointerEvents: "none",
-          zIndex: 0,
-          overflow: "hidden",
-        }}
-        aria-hidden="true"
-      >
-        {/* === BOTTOM-LEFT: WC2026 concentric arch rings === */}
+      <div style={layerStyle} aria-hidden="true">
         <div
           style={{
             position: "absolute",
-            bottom: "-200px",
-            left: "-200px",
-            width: "650px",
-            height: "650px",
-            borderRadius: "50%",
-            background: "transparent",
-            boxShadow: `
-              0 0 0 20px rgba(193, 18, 31, 0.22),
-              0 0 0 44px rgba(232, 93, 4, 0.20),
-              0 0 0 68px rgba(244, 140, 6, 0.18),
-              0 0 0 92px rgba(212, 160, 23, 0.16),
-              0 0 0 116px rgba(45, 106, 79, 0.14),
-              0 0 0 140px rgba(29, 78, 137, 0.13),
-              0 0 0 164px rgba(106, 13, 173, 0.10)
-            `,
+            inset: "-8% -7%",
+            background:
+              "radial-gradient(circle at 12% 16%, rgba(255,255,255,0.45), transparent 0 9%, transparent 13%), radial-gradient(circle at 92% 22%, rgba(255,137,111,0.65), transparent 0 12%, transparent 18%), linear-gradient(135deg, #6500a8 0 12%, #00c928 12% 34%, #e7ff00 34% 62%, #00c928 62% 78%, #6500a8 78% 100%)",
+            opacity: 0.82,
           }}
         />
 
-        {/* === TOP-RIGHT: smaller arch cluster === */}
         <div
           style={{
             position: "absolute",
-            top: "-140px",
-            right: "-140px",
-            width: "420px",
-            height: "420px",
-            borderRadius: "50%",
-            background: "transparent",
-            boxShadow: `
-              0 0 0 16px rgba(193, 18, 31, 0.14),
-              0 0 0 34px rgba(232, 93, 4, 0.12),
-              0 0 0 52px rgba(244, 140, 6, 0.10),
-              0 0 0 70px rgba(212, 160, 23, 0.09),
-              0 0 0 88px rgba(29, 78, 137, 0.08)
-            `,
+            left: "-7vw",
+            top: "8vh",
+            width: "114vw",
+            height: "24vh",
+            background: "#00c928",
+            transform: "skewY(-6deg)",
+            opacity: 0.9,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: "-8vw",
+            bottom: "10vh",
+            width: "118vw",
+            height: "24vh",
+            background: "#6b00a8",
+            transform: "skewY(8deg)",
+            opacity: 0.9,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: "-9vw",
+            bottom: "22vh",
+            width: "118vw",
+            height: "8vh",
+            background: "#ff8b71",
+            transform: "skewY(-4deg)",
+            opacity: 0.86,
           }}
         />
 
-        {/* === CENTER-RIGHT: trophy silhouette as inline SVG === */}
         <div
           style={{
             position: "absolute",
+            left: "50%",
             top: "50%",
-            right: "3%",
-            transform: "translateY(-50%)",
-            opacity: 0.07,
-            width: "180px",
-            height: "260px",
+            width: "min(92vw, 980px)",
+            height: "min(92vh, 900px)",
+            transform: "translate(-50%, -50%)",
+            opacity: 0.52,
           }}
         >
-          <svg
-            viewBox="0 0 100 160"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ width: "100%", height: "100%" }}
-          >
-            <ellipse cx="50" cy="38" rx="32" ry="24" fill="none" stroke="#C9A84C" strokeWidth="3" />
-            <path d="M18 30 Q5 38 10 52 Q15 62 26 58" fill="none" stroke="#C9A84C" strokeWidth="2.5" />
-            <path d="M82 30 Q95 38 90 52 Q85 62 74 58" fill="none" stroke="#C9A84C" strokeWidth="2.5" />
-            <rect x="44" y="62" width="12" height="40" fill="#C9A84C" rx="2" />
-            <rect x="28" y="102" width="44" height="10" fill="#C9A84C" rx="3" />
-            <rect x="22" y="112" width="56" height="8" fill="#C9A84C" rx="2" />
-            <circle cx="50" cy="36" r="16" fill="none" stroke="#C9A84C" strokeWidth="1.5" />
-            <ellipse cx="50" cy="36" rx="16" ry="7" fill="none" stroke="#C9A84C" strokeWidth="1" />
-          </svg>
+          <div
+            style={{
+              position: "absolute",
+              left: "2%",
+              top: "-3%",
+              width: "96%",
+              height: "50%",
+              border: "clamp(80px, 13vw, 160px) solid #e7ff00",
+              borderBottom: 0,
+              borderRadius: "999px 999px 0 0",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: "4%",
+              bottom: "-2%",
+              width: "92%",
+              height: "56%",
+              border: "clamp(86px, 14vw, 170px) solid #e7ff00",
+              borderTop: 0,
+              borderRadius: "0 0 999px 999px",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: "42%",
+              top: "28%",
+              width: "34%",
+              height: "44%",
+              background: "#050505",
+              borderRadius: "26% 20% 28% 22%",
+            }}
+          />
         </div>
 
-        {/* === AMBIENT GOLD GLOW — top right radial === */}
         <div
           style={{
             position: "absolute",
-            top: "-100px",
-            right: "-100px",
-            width: "500px",
-            height: "500px",
-            borderRadius: "50%",
+            left: "50%",
+            top: "50%",
+            width: "min(48vw, 520px)",
+            height: "min(58vh, 540px)",
+            transform: "translate(-50%, -50%)",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gridAutoRows: "1fr",
+            gap: "0",
+            opacity: 0.58,
+            borderRadius: "24px",
+            overflow: "hidden",
+          }}
+        >
+          {tileStyles.map((style, index) => (
+            <div key={index} style={style} />
+          ))}
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "51%",
+            width: "min(25vw, 260px)",
+            height: "min(35vh, 320px)",
+            transform: "translate(-50%, -50%)",
+            borderRadius: "30px",
+            background: "#020202",
+            opacity: 0.72,
+            display: "grid",
+            placeItems: "center",
+            boxShadow: "0 26px 90px rgba(0,0,0,0.45)",
+          }}
+        >
+          <div style={{ width: "58%", height: "72%", opacity: 0.9 }}>
+            <TrophyMark />
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
             background:
-              "radial-gradient(circle, rgba(201,168,76,0.09) 0%, transparent 65%)",
+              "radial-gradient(circle at 50% 48%, transparent 0 22%, rgba(5,7,13,0.18) 48%, rgba(5,7,13,0.86) 100%), linear-gradient(180deg, rgba(5,7,13,0.18), rgba(5,7,13,0.72))",
           }}
         />
       </div>
-
-      {/* === GOLD TOP BAR — 2px shimmer line at very top === */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "2px",
-          pointerEvents: "none",
-          zIndex: 9999,
-          background:
-            "linear-gradient(to right, transparent 0%, #C9A84C 25%, #F4D03F 50%, #C9A84C 75%, transparent 100%)",
-          opacity: 0.8,
-        }}
-        aria-hidden="true"
-      />
     </>
   );
 }
