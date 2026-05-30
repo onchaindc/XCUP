@@ -181,7 +181,7 @@ export function MarketsPage() {
                     Real live and scheduled events from sports feeds across football, basketball, cricket, baseball, hockey, tennis, MMA, and international fixtures.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                   <Stat label="Live" value={String(liveCount)} icon={Radio} />
                   <Stat label="Tracked" value={String(events.length)} icon={Trophy} />
                 </div>

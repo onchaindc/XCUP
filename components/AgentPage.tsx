@@ -207,7 +207,7 @@ export function AgentPage() {
             </section>
 
             <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-              <div className="grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-black/32 p-1">
+              <div className="grid grid-cols-1 gap-1 rounded-lg border border-white/10 bg-black/32 p-1 sm:grid-cols-3">
                 {(["signal", "risk", "settlement"] as const).map((item) => (
                   <button
                     key={item}

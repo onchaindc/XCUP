@@ -421,7 +421,7 @@ function PenaltyDuel({
           <p className="text-sm font-bold text-white/64">{penaltyResult || "Choose a direction to shoot."}</p>
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
         <MiniMetric icon={CircleDot} label="Shots" value={keeperPick ? "1" : "0"} />
         <MiniMetric icon={Shield} label="Mode" value="PvE" />
         <MiniMetric icon={Zap} label="XP" value={penaltyResult.startsWith("Goal") ? "+25" : "0"} />

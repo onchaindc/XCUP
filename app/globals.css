@@ -578,6 +578,16 @@ canvas {
   }
 }
 
+@media (max-width: 767px) {
+  main,
+  [role="main"] {
+    max-width: 100vw;
+    overflow-x: hidden;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
 /* -- World Cup Trophy Dusk Theme -- */
 
 /* Ghosted ball watermark behind entire app */

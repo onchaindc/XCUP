@@ -253,7 +253,7 @@ export function SquadsPage() {
                 <p className="mt-3 text-xl font-black text-white">{activeSquad ? activeSquad.name : "No squads yet"}</p>
                 <p className="mt-2 text-sm leading-6 text-white/58">{activeSquad ? activeSquad.motto : "Create the first squad to start the board."}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {metrics.map((metric) => (
                   <motion.div key={metric.label} className="rounded-lg border border-white/10 bg-black/55 p-3 backdrop-blur-md">
                     <div className="flex items-center justify-between gap-3">
@@ -294,7 +294,7 @@ export function SquadsPage() {
                       </span>
                     </div>
                     <p className="mt-3 text-sm leading-6 text-white/58">{squad.motto}</p>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <MiniStat label="Members" value={String(squad.members)} />
                       <MiniStat label="Territory" value={squad.territory} />
                     </div>
