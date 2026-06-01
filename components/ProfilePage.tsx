@@ -177,13 +177,13 @@ function ProfileHero({
         </button>
       </div>
       <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_25rem]">
-        <div className="flex flex-wrap gap-4">
-          <button className="-mt-14 grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/15 bg-[#090d14] text-white shadow-2xl sm:h-28 sm:w-28" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Upload avatar">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
+          <button className="-mt-10 grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border border-white/15 bg-[#090d14] text-white shadow-2xl ring-4 ring-black sm:-mt-12 sm:h-28 sm:w-28" type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Upload avatar">
             {profile.avatarUrl ? <img className="h-full w-full object-cover" src={profile.avatarUrl} alt="" /> : <UserRound size={42} aria-hidden="true" />}
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 max-w-full">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Competitor identity</p>
-            <h1 className="mt-1 text-3xl font-black leading-none text-white sm:text-5xl">{profile.displayName || "Unnamed manager"}</h1>
+            <h1 className="mt-1 max-w-full break-words text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">{profile.displayName || "Unnamed manager"}</h1>
             {preferences.privacy.publicProfile ? (
               <>
                 <p className="mt-2 text-sm font-bold text-white/54">{profile.username || "@manager"} - {profile.squadAffiliation || "No squad yet"}</p>

@@ -181,7 +181,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (remote?.room) {
     return NextResponse.json({ room: remote.room } satisfies SquadRoomResponse);
   }
-  if (remote?.error) {
+  if (remote?.error && remote.status !== 404) {
     return NextResponse.json({ error: remote.error }, { status: remote.status });
   }
 

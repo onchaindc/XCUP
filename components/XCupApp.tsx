@@ -6,9 +6,11 @@ import {
   ArrowRight,
   Brain,
   Bot,
+  BookOpen,
   CloudSun,
   Gamepad2,
   Globe2,
+  Home,
   Newspaper,
   Radio,
   Settings2,
@@ -19,7 +21,7 @@ import {
   Wallet
 } from "lucide-react";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
@@ -35,12 +37,13 @@ import { AppAudioButton } from "@/components/AppAudioButton";
 import { WorldCupCountdown } from "@/components/WorldCupCountdown";
 
 const topNav = [
-  { label: "Matches", href: "/markets", icon: Radio },
+  { label: "Home", href: "https://xcupglobal.vercel.app/", icon: Home, external: true, iconOnly: true },
   { label: "Arena", href: "/arena", icon: Trophy },
   { label: "Markets", href: "/markets", icon: Activity },
   { label: "GameFi", href: "/gamefi", icon: Gamepad2 },
   { label: "Squads", href: "/squads", icon: Users },
-  { label: "Agent", href: "/agent", icon: Bot }
+  { label: "Agent", href: "/agent", icon: Bot },
+  { label: "Docs", href: "/docs", icon: BookOpen }
 ];
 
 const agentInsights = [
@@ -259,10 +262,10 @@ export function TopHeader({
       {isMenuOpen && (
         <div className="flex flex-col gap-1 border-t border-[#1e2a3a] bg-[#080c12]/95 px-4 py-3 backdrop-blur-sm md:hidden">
           {topNav.map((item) => (
-            <Link key={item.label} className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-[#6b7a93] transition-all hover:bg-[#0d1320] hover:text-white" href={item.href} onClick={() => setIsMenuOpen(false)}>
+            <NavLink key={item.label} item={item} className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-[#6b7a93] transition-all hover:bg-[#0d1320] hover:text-white" onClick={() => setIsMenuOpen(false)}>
               <item.icon size={16} aria-hidden="true" />
-              {item.label}
-            </Link>
+              {item.iconOnly ? <span className="sr-only">{item.label}</span> : item.label}
+            </NavLink>
           ))}
           <div className="my-2 border-t border-[#1e2a3a]" />
           <div className="flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-[#6b7a93]">
@@ -307,6 +310,10 @@ export function TopHeader({
             <Settings2 size={16} aria-hidden="true" />
             Settings
           </Link>
+          <a className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-[#6b7a93] transition-all hover:bg-[#0d1320] hover:text-white" href="https://x.com/xcuparena" target="_blank" rel="noreferrer">
+            <span className="grid h-4 w-4 place-items-center text-xs font-black">X</span>
+            X
+          </a>
         </div>
       )}
       <div className="hidden md:block">
@@ -320,10 +327,10 @@ export function TopHeader({
         </Link>
         <nav className="hidden items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 xl:flex">
           {topNav.map((item) => (
-            <Link key={item.label} className="flex min-h-10 items-center gap-2 rounded-md px-3 text-xs font-black text-white/62 transition hover:bg-white/10 hover:text-white" href={item.href}>
+            <NavLink key={item.label} item={item} className={`${item.iconOnly ? "grid min-h-10 w-10 place-items-center px-0" : "flex min-h-10 items-center gap-2 px-3"} rounded-md text-xs font-black text-white/62 transition hover:bg-white/10 hover:text-white`}>
               <item.icon size={15} aria-hidden="true" />
-              {item.label}
-            </Link>
+              {item.iconOnly ? <span className="sr-only">{item.label}</span> : item.label}
+            </NavLink>
           ))}
         </nav>
         <div className="flex items-center gap-2">
@@ -368,6 +375,9 @@ export function TopHeader({
           <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="/profile?tab=settings" aria-label="Settings">
             <Settings2 size={16} aria-hidden="true" />
           </Link>
+          <a className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-sm font-black text-white/70 transition hover:bg-white/10 hover:text-white" href="https://x.com/xcuparena" target="_blank" rel="noreferrer" aria-label="X">
+            X
+          </a>
           {isConnected ? (
             <button className="flex max-w-[11.5rem] items-center gap-2 rounded-lg border border-white/12 bg-white/[0.07] px-3 py-2 text-left text-xs font-bold text-white transition hover:bg-white/12" type="button" onClick={onDisconnect}>
               <Wallet size={16} aria-hidden="true" />
@@ -388,14 +398,40 @@ export function TopHeader({
       {network.networkNotice ? <p className="mt-2 rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 px-3 py-2 text-xs font-bold text-[#80ffe2]">{network.networkNotice}</p> : null}
       <nav className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 sm:grid-cols-6 xl:hidden">
         {topNav.map((item) => (
-          <Link key={item.label} className="flex min-h-10 items-center justify-center gap-1 rounded-md px-1 text-[11px] font-black text-white/62 transition hover:bg-white/10 hover:text-white" href={item.href}>
+          <NavLink key={item.label} item={item} className="flex min-h-10 items-center justify-center gap-1 rounded-md px-1 text-[11px] font-black text-white/62 transition hover:bg-white/10 hover:text-white">
             <item.icon size={14} aria-hidden="true" />
-            {item.label}
-          </Link>
+            {item.iconOnly ? <span className="sr-only">{item.label}</span> : item.label}
+          </NavLink>
         ))}
       </nav>
       </div>
     </header>
+  );
+}
+
+function NavLink({
+  item,
+  className,
+  children,
+  onClick
+}: {
+  item: (typeof topNav)[number];
+  className: string;
+  children: ReactNode;
+  onClick?: () => void;
+}) {
+  if (item.external) {
+    return (
+      <a className={className} href={item.href} target="_blank" rel="noreferrer" onClick={onClick} aria-label={item.iconOnly ? item.label : undefined}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link className={className} href={item.href} onClick={onClick} aria-label={item.iconOnly ? item.label : undefined}>
+      {children}
+    </Link>
   );
 }
 

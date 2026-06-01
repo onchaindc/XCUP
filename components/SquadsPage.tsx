@@ -22,6 +22,7 @@ type SquadDraft = {
 
 const squadRoles: SquadRole[] = ["Captain", "Strategist", "Analyst", "Treasurer", "Scout"];
 const squadAccents = ["#18e3bd", "#42a5ff", "#f5a524", "#ff5c39"];
+const LOCAL_SQUADS_KEY = "xcup-local-squads";
 
 const xCupArenaAbi = [
   {
@@ -82,13 +83,22 @@ export function SquadsPage() {
         }
         const data = (await response.json()) as { squads: SquadRecord[] };
         if (!cancelled) {
-          setSquads(data.squads);
-          setActiveSquadId((current) => current || data.squads[0]?.id || "");
-          setBanner(data.squads.length ? "Create a squad or join one on the board." : "No squads yet. Be the first creator.");
+          const mergedSquads = mergeSquads(data.squads, loadLocalSquads());
+          setSquads(mergedSquads);
+          persistLocalSquads(mergedSquads);
+          setActiveSquadId((current) => current || mergedSquads[0]?.id || "");
+          setBanner(mergedSquads.length ? "Create a squad or join one on the board." : "No squads yet. Be the first creator.");
         }
       } catch (error) {
         if (!cancelled) {
-          setBanner(error instanceof Error ? error.message : "Unable to load squads.");
+          const cachedSquads = loadLocalSquads();
+          if (cachedSquads.length) {
+            setSquads(cachedSquads);
+            setActiveSquadId((current) => current || cachedSquads[0]?.id || "");
+            setBanner("Showing saved squads while shared sync reconnects.");
+          } else {
+            setBanner(error instanceof Error ? error.message : "Unable to load squads.");
+          }
         }
       } finally {
         if (!cancelled) {
@@ -159,7 +169,11 @@ export function SquadsPage() {
       if (!response.ok || !data.squad) {
         throw new Error(data.error || "Unable to create squad.");
       }
-      setSquads((current) => [data.squad!, ...current.filter((item) => item.id !== data.squad?.id)]);
+      setSquads((current) => {
+        const next = [data.squad!, ...current.filter((item) => item.id !== data.squad?.id)];
+        persistLocalSquads(next);
+        return next;
+      });
       setActiveSquadId(data.squad.id);
       setDraft({ name: "", motto: "", territory: "", role: "Captain", accent: squadAccents[0] });
       setBanner(`Created ${data.squad.name}. It is now visible on the shared squad board.`);
@@ -202,7 +216,11 @@ export function SquadsPage() {
       if (!response.ok || !data.squad) {
         throw new Error(data.error || "Unable to join squad.");
       }
-      setSquads((current) => current.map((item) => (item.id === squad.id ? data.squad! : item)));
+      setSquads((current) => {
+        const next = current.map((item) => (item.id === squad.id ? data.squad! : item));
+        persistLocalSquads(next);
+        return next;
+      });
       setJoinedSquadIds((current) => new Set(current).add(squad.id));
       setBanner(txHash ? `Joined ${squad.name}. Tx ${txHash.slice(0, 10)}...` : `Joined ${squad.name}. Shared roster updated.`);
     } catch (error) {
@@ -432,4 +450,31 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 function arenaAddress() {
   const configured = process.env.NEXT_PUBLIC_XCUP_ARENA_ADDRESS;
   return configured && configured.startsWith("0x") ? (configured as `0x${string}`) : undefined;
+}
+
+function loadLocalSquads() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(LOCAL_SQUADS_KEY);
+    return raw ? (JSON.parse(raw) as SquadRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistLocalSquads(squads: SquadRecord[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LOCAL_SQUADS_KEY, JSON.stringify(squads.slice(0, 80)));
+  } catch {
+  }
+}
+
+function mergeSquads(remote: SquadRecord[], local: SquadRecord[]) {
+  const seen = new Set<string>();
+  return [...remote, ...local].filter((squad) => {
+    if (seen.has(squad.id)) return false;
+    seen.add(squad.id);
+    return true;
+  });
 }

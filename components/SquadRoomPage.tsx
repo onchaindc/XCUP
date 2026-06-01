@@ -25,7 +25,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
-import type { SquadMessage, SquadRoom } from "@/lib/squads";
+import type { SquadCompetition, SquadMessage, SquadRecord, SquadRoom } from "@/lib/squads";
 import { clubsForSport, slotsForSport, type LineupSlot, type PlayerOption, type PlayerSport } from "@/lib/player-catalog";
 import { xLayerTestnet } from "@/lib/arc";
 import { pickWalletConnector } from "@/lib/wallet";
@@ -35,10 +35,21 @@ import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 type Tab = "overview" | "chat" | "captain";
 type Modal = "stocks" | "shootout" | "xi" | null;
 
+const LOCAL_SQUADS_KEY = "xcup-local-squads";
+
 const gifPicks = [
-  "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
-  "https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif",
-  "https://media.giphy.com/media/3o6Zt6ML6BklcajjsA/giphy.gif"
+  { label: "Goal celebration", url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif", tags: "goal celebration football soccer win" },
+  { label: "Big reaction", url: "https://media.giphy.com/media/xT9IgG50Fb7Mi0prBC/giphy.gif", tags: "reaction wow hype chat" },
+  { label: "Matchday mood", url: "https://media.giphy.com/media/3o6Zt6ML6BklcajjsA/giphy.gif", tags: "matchday excited fans" },
+  { label: "Trophy lift", url: "https://media.giphy.com/media/26BRFVywkb1lkbz1K/giphy.gif", tags: "trophy winner champions" },
+  { label: "Pressure", url: "https://media.giphy.com/media/11sBLVxNs7v6WA/giphy.gif", tags: "pressure nervous intense" },
+  { label: "Clean pass", url: "https://media.giphy.com/media/3o7aD2saalBwwftBIY/giphy.gif", tags: "pass skill football" },
+  { label: "Clutch", url: "https://media.giphy.com/media/3ohhwfAa9rbXaZe86c/giphy.gif", tags: "clutch focus locked in" },
+  { label: "Laugh", url: "https://media.giphy.com/media/10JhviFuU2gWD6/giphy.gif", tags: "laugh funny banter" },
+  { label: "Applause", url: "https://media.giphy.com/media/nbvFVPiEiJH6JOGIok/giphy.gif", tags: "applause clap respect" },
+  { label: "No way", url: "https://media.giphy.com/media/6nWhy3ulBL7GSCvKw6/giphy.gif", tags: "no way shock reaction" },
+  { label: "Vamos", url: "https://media.giphy.com/media/3o6ZsYzuLyRfSGX4f6/giphy.gif", tags: "vamos celebrate win" },
+  { label: "Defense", url: "https://media.giphy.com/media/5VKbvrjxpVJCM/giphy.gif", tags: "defense blocked surprised" }
 ];
 
 export function SquadRoomPage({ id }: { id: string }) {
@@ -85,13 +96,21 @@ export function SquadRoomPage({ id }: { id: string }) {
           setRoom((current) => {
             const localMessages = loadLocalMessages(localMessagesKey);
             const messages = mergeMessages(data.room.messages, localMessages);
-            return { ...(current ?? data.room), ...data.room, messages };
+            const nextRoom = { ...(current ?? data.room), ...data.room, messages };
+            persistLocalSquad(nextRoom.squad);
+            return nextRoom;
           });
           setStatus("");
         }
       } catch (error) {
         if (!cancelled) {
-          setStatus(error instanceof Error ? error.message : "Unable to load squad room.");
+          const cachedSquad = loadLocalSquad(id);
+          if (cachedSquad) {
+            setRoom(localRoomFor(cachedSquad, loadLocalMessages(localMessagesKey)));
+            setStatus("Showing saved squad room while shared sync reconnects.");
+          } else {
+            setStatus(error instanceof Error ? error.message : "Unable to load squad room.");
+          }
         }
       } finally {
         if (!cancelled) {
@@ -138,6 +157,7 @@ export function SquadRoomPage({ id }: { id: string }) {
       return;
     }
     setRoom(data.room);
+    persistLocalSquad(data.room.squad);
     persistLocalMessages(localMessagesKey, data.room.messages);
     setStatus("");
   }
@@ -363,6 +383,9 @@ function ChatPanel({
   tip: (to: string) => void;
 }) {
   const visibleMessages = room.messages.slice().reverse();
+  const [gifOpen, setGifOpen] = useState(false);
+  const [gifQuery, setGifQuery] = useState("");
+  const filteredGifs = gifPicks.filter((gif) => `${gif.label} ${gif.tags}`.toLowerCase().includes(gifQuery.trim().toLowerCase()));
 
   return (
     <section className="flex min-h-[42rem] flex-col overflow-hidden rounded-lg border border-white/10 bg-white/[0.045]">
@@ -401,6 +424,37 @@ function ChatPanel({
       <div className="border-t border-white/10 p-4">
         {replyTo ? <p className="mb-2 rounded-lg border border-white/10 bg-black/35 px-3 py-2 text-xs text-white/58">Replying to {short(replyTo.author)} <button className="font-black text-white" type="button" onClick={() => setReplyTo(null)}>clear</button></p> : null}
         {attachment ? <p className="mb-2 rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 px-3 py-2 text-xs font-bold text-[#80ffe2]">{attachment.type.toUpperCase()} attached</p> : null}
+        {gifOpen ? (
+          <div className="mb-3 rounded-lg border border-white/10 bg-[#070911] p-3 shadow-2xl">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/45 px-3 py-2">
+              <Search size={15} className="text-white/42" aria-hidden="true" />
+              <input
+                className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/32"
+                value={gifQuery}
+                onChange={(event) => setGifQuery(event.target.value)}
+                placeholder="Search GIFs"
+              />
+              <button className="text-xs font-black text-white/50 hover:text-white" type="button" onClick={() => setGifOpen(false)}>Close</button>
+            </div>
+            <div className="mt-3 grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
+              {filteredGifs.map((gif) => (
+                <button
+                  key={gif.url}
+                  className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] text-left transition hover:border-[#18e3bd]/50"
+                  type="button"
+                  onClick={() => {
+                    setAttachment({ type: "gif", url: gif.url, label: gif.label });
+                    setGifOpen(false);
+                  }}
+                >
+                  <img className="h-24 w-full object-cover" src={gif.url} alt="" />
+                  <span className="block truncate px-2 py-1.5 text-[11px] font-black text-white/68">{gif.label}</span>
+                </button>
+              ))}
+              {!filteredGifs.length ? <p className="col-span-full rounded-lg border border-white/10 bg-black/35 p-3 text-sm text-white/58">No GIF matches. Try goal, laugh, trophy, pressure, or clutch.</p> : null}
+            </div>
+          </div>
+        ) : null}
         <input
           ref={fileInputRef}
           className="hidden"
@@ -427,7 +481,7 @@ function ChatPanel({
           <button className="grid h-12 w-12 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-white hover:bg-white/12" type="button" onClick={() => fileInputRef.current?.click()} aria-label="Upload image">
             <ImagePlus size={17} aria-hidden="true" />
           </button>
-          <button className="grid h-12 w-12 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-white hover:bg-white/12" type="button" onClick={() => setAttachment({ type: "gif", url: gifPicks[Math.floor(Math.random() * gifPicks.length)], label: "Matchday GIF" })} aria-label="Send GIF">
+          <button className="grid h-12 w-12 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-white hover:bg-white/12" type="button" onClick={() => setGifOpen((current) => !current)} aria-label="Choose GIF">
             <Laugh size={17} aria-hidden="true" />
           </button>
           <button className="grid h-12 w-12 place-items-center rounded-lg bg-white text-black hover:bg-[#18e3bd]" type="button" onClick={() => void sendMessage()} aria-label="Send message">
@@ -885,6 +939,53 @@ function mergeMessages(remote: SquadMessage[], local: SquadMessage[]) {
       return true;
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+function loadLocalSquad(id: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LOCAL_SQUADS_KEY);
+    const squads = raw ? (JSON.parse(raw) as SquadRecord[]) : [];
+    return squads.find((squad) => squad.id === id) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function persistLocalSquad(squad: SquadRecord) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.localStorage.getItem(LOCAL_SQUADS_KEY);
+    const squads = raw ? (JSON.parse(raw) as SquadRecord[]) : [];
+    const next = [squad, ...squads.filter((item) => item.id !== squad.id)].slice(0, 80);
+    window.localStorage.setItem(LOCAL_SQUADS_KEY, JSON.stringify(next));
+  } catch {
+  }
+}
+
+function localRoomFor(squad: SquadRecord, messages: SquadMessage[]): SquadRoom {
+  return {
+    squad,
+    members: [],
+    messages,
+    captainApplicants: [],
+    captainVotes: [],
+    competitions: localCompetitions(squad.name),
+    liveActivity: [
+      messages[0]?.body ? `Latest saved chat: ${messages[0].body}` : "Saved squad room restored on this device.",
+      "Shared sync is reconnecting.",
+      `${squad.members} members on the saved roster.`
+    ],
+    ranking: 1000 + squad.members * 20 + messages.length * 5
+  };
+}
+
+function localCompetitions(squadName: string): SquadCompetition[] {
+  return [
+    { id: "stock", title: "Player Stock Market", status: "Live window", summary: `${squadName} portfolio opens before kickoff.` },
+    { id: "shootout", title: "Penalty Shootout", status: "Ranked", summary: "1v1 streaks and squad-vs-squad records." },
+    { id: "xi", title: "Starting XI Battles", status: "Voting", summary: "Build, compare, and vote on tactical boards." }
+  ];
 }
 
 function readFileAsDataUrl(file: File) {
