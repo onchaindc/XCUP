@@ -729,6 +729,83 @@ function MiniGameModal({ modal, onClose }: { modal: Modal; onClose: () => void }
   );
 }
 
+function TipModal({
+  open,
+  to,
+  amount,
+  busy,
+  symbol,
+  balance,
+  onAmountChange,
+  onClose,
+  onConfirm
+}: {
+  open: boolean;
+  to: string;
+  amount: string;
+  busy: boolean;
+  symbol: string;
+  balance: string;
+  onAmountChange: (value: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div className="fixed inset-0 z-[95] grid place-items-end bg-black/70 p-3 backdrop-blur-md sm:place-items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.section
+            className="w-full max-w-md rounded-lg border border-white/10 bg-[#070911] text-white shadow-2xl"
+            initial={{ y: 32, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 32, opacity: 0 }}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Wallet tip</p>
+                <h2 className="mt-1 text-2xl font-black text-white">Send tip</h2>
+              </div>
+              <button className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.06] text-white transition hover:bg-white/12" type="button" onClick={onClose} aria-label="Close tip modal">
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="grid gap-4 p-4">
+              <div className="rounded-lg border border-white/10 bg-black/35 p-3">
+                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-white/42">Recipient</p>
+                <p className="mt-2 break-all text-sm font-bold text-white">{to}</p>
+              </div>
+              <label className="grid gap-2 text-sm font-bold text-white/62">
+                Tip amount
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/35 px-3">
+                  <input
+                    className="min-w-0 flex-1 bg-transparent py-3 text-base font-black text-white outline-none"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(event) => onAmountChange(event.target.value)}
+                    placeholder={`0.01 ${symbol}`}
+                  />
+                  <span className="text-sm font-black text-[#18e3bd]">{symbol}</span>
+                </div>
+              </label>
+              <div className="rounded-lg border border-white/10 bg-black/35 p-3 text-xs font-bold text-white/56">
+                Available balance: {balance}
+              </div>
+              <div className="flex gap-2">
+                <button className="flex-1 rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-black text-white transition hover:bg-white/12" type="button" onClick={onClose}>
+                  Cancel
+                </button>
+                <button className="flex-1 rounded-lg bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:cursor-not-allowed disabled:opacity-50" type="button" disabled={busy || !amount.trim()} onClick={onConfirm}>
+                  {busy ? "Sending..." : "Send tip"}
+                </button>
+              </div>
+            </div>
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 function StockMarketModule() {
   const players = [
     ["Saka", "+12.4%", "Attack momentum"],
