@@ -47,6 +47,7 @@ export type UserProfile = {
   xp?: number;
   prestigeLevel?: number;
   country?: string;
+  countryCode?: string;
   bio?: string;
   predictionAccuracy?: number;
   winStreak?: number;

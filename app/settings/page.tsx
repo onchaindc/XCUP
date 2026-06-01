@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 import { SettingsTab } from "@/components/ProfilePage";
+import { SiteFooter } from "@/components/SiteFooter";
 import { useAppStore } from "@/lib/app-store";
 import { xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
@@ -28,6 +29,11 @@ export default function SettingsPage() {
     query: { enabled: Boolean(address) }
   });
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowLoader(false), 500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function connectWallet() {
     const connector = pickWalletConnector(connectors);
@@ -83,6 +89,7 @@ export default function SettingsPage() {
           bannerInputRef={bannerInputRef}
           uploadProfileImage={uploadProfileImage}
         />
+        <SiteFooter />
       </div>
     </main>
   );

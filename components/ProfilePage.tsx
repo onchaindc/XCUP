@@ -22,6 +22,7 @@ import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
 import { useAppStore, type Preferences, type UserProfile } from "@/lib/app-store";
 import { xLayerTestnet } from "@/lib/arc";
 import { DEFAULT_MATCHDAY_AUDIO, MATCHDAY_AUDIO_TRACKS } from "@/lib/audio-tracks";
+import { countriesForLocale, flagEmoji, type CountryOption } from "@/lib/countries";
 import { clearLocalAuthSession, readLocalAuthSession, type LocalAuthSession } from "@/lib/session";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
@@ -108,6 +109,7 @@ export function ProfilePage({ initialTab = "overview" }: { initialTab?: ProfileT
         <ProfileHero
           profile={profile}
           preferences={preferences}
+          updateProfile={updateProfile}
           avatarInputRef={avatarInputRef}
           bannerInputRef={bannerInputRef}
           uploadProfileImage={uploadProfileImage}
@@ -150,18 +152,22 @@ export function ProfilePage({ initialTab = "overview" }: { initialTab?: ProfileT
 function ProfileHero({
   profile,
   preferences,
+  updateProfile,
   avatarInputRef,
   bannerInputRef,
   uploadProfileImage
 }: {
   profile: UserProfile;
   preferences: Preferences;
+  updateProfile: (profile: Partial<UserProfile>) => void;
   avatarInputRef: React.RefObject<HTMLInputElement | null>;
   bannerInputRef: React.RefObject<HTMLInputElement | null>;
   uploadProfileImage: (file: File, field: "avatarUrl" | "bannerUrl") => void | Promise<void>;
 }) {
   const xp = profile.xp ?? 0;
   const level = profile.prestigeLevel ?? 1;
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+  const countryFlag = profile.countryCode ? flagEmoji(profile.countryCode) : "";
   return (
     <section className="overflow-hidden rounded-lg border border-white/10 bg-black">
       <input ref={avatarInputRef} className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] ? void uploadProfileImage(event.target.files[0], "avatarUrl") : undefined} />
@@ -209,11 +215,27 @@ function ProfileHero({
           </div>
           <div className="grid grid-cols-3 gap-2">
             <MiniMetric icon={Trophy} label="Rank" value={profile.globalRanking || "Unranked"} />
-            <MiniMetric icon={Flag} label="Country" value={profile.country || "Open"} />
+            <MiniMetric
+              icon={Flag}
+              label="Country"
+              value={profile.country || "Open"}
+              prefix={countryFlag}
+              asButton
+              onClick={() => setCountryPickerOpen(true)}
+            />
             <MiniMetric icon={Crown} label="XP" value={String(xp)} />
           </div>
         </div>
       </div>
+      <CountryPicker
+        open={countryPickerOpen}
+        selectedCode={profile.countryCode}
+        onClose={() => setCountryPickerOpen(false)}
+        onSelect={(country) => {
+          updateProfile({ country: country.name, countryCode: country.code });
+          setCountryPickerOpen(false);
+        }}
+      />
     </section>
   );
 }
@@ -418,14 +440,106 @@ function Panel({ title, empty }: { title: string; empty: string }) {
   );
 }
 
-function MiniMetric({ icon: Icon, label, value }: { icon: typeof Trophy; label: string; value: string }) {
+function CountryPicker({
+  open,
+  selectedCode,
+  onClose,
+  onSelect
+}: {
+  open: boolean;
+  selectedCode?: string;
+  onClose: () => void;
+  onSelect: (country: CountryOption) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const countries = countriesForLocale();
+  const filteredCountries = countries.filter((country) => `${country.name} ${country.code}`.toLowerCase().includes(query.trim().toLowerCase()));
+
   return (
-    <div className="rounded-lg border border-white/10 bg-black/35 p-3">
+    <AnimatePresence>
+      {open ? (
+        <motion.div className="fixed inset-0 z-[90] grid place-items-end bg-black/70 p-3 backdrop-blur-md sm:place-items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.section
+            className="max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-lg border border-white/10 bg-[#070911] text-white shadow-2xl"
+            initial={{ y: 36, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 36, opacity: 0 }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Country flag</p>
+                <h2 className="mt-1 text-2xl font-black text-white">Select your country</h2>
+              </div>
+              <button className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-black text-white transition hover:bg-white/12" type="button" onClick={onClose}>
+                Close
+              </button>
+            </div>
+            <div className="p-4">
+              <input
+                className="w-full rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-sm font-bold text-white outline-none placeholder:text-white/32 focus:border-[#18e3bd]/60"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search country or code"
+                autoFocus
+              />
+              <div className="mt-4 grid max-h-[62dvh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {filteredCountries.map((country) => (
+                  <button
+                    key={country.code}
+                    className={`flex min-h-16 items-center gap-3 rounded-lg border p-3 text-left transition ${selectedCode === country.code ? "border-[#18e3bd] bg-[#18e3bd]/15" : "border-white/10 bg-black/35 hover:border-[#18e3bd]/45 hover:bg-[#18e3bd]/10"}`}
+                    type="button"
+                    onClick={() => onSelect(country)}
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.07] text-2xl">{country.flag || country.code}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-black text-white">{country.name}</span>
+                      <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-white/38">{country.code}</span>
+                    </span>
+                  </button>
+                ))}
+                {!filteredCountries.length ? <p className="col-span-full rounded-lg border border-white/10 bg-black/35 p-4 text-sm text-white/58">No matching country found.</p> : null}
+              </div>
+            </div>
+          </motion.section>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function MiniMetric({
+  icon: Icon,
+  label,
+  value,
+  prefix,
+  asButton,
+  onClick
+}: {
+  icon: typeof Trophy;
+  label: string;
+  value: string;
+  prefix?: string;
+  asButton?: boolean;
+  onClick?: () => void;
+}) {
+  const className = "rounded-lg border border-white/10 bg-black/35 p-3 text-left";
+  const content = (
+    <>
       <Icon size={15} className="text-[#18e3bd]" aria-hidden="true" />
       <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/38">{label}</p>
-      <p className="mt-1 truncate text-sm font-black text-white">{value}</p>
-    </div>
+      <p className="mt-1 truncate text-sm font-black text-white">{prefix ? `${prefix} ` : ""}{value}</p>
+    </>
   );
+
+  if (asButton) {
+    return (
+      <button className={`${className} transition hover:border-[#18e3bd]/45 hover:bg-[#18e3bd]/10`} type="button" onClick={onClick}>
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {

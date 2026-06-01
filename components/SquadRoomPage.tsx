@@ -23,8 +23,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatUnits } from "viem";
-import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
+import { formatUnits, isAddress, parseUnits } from "viem";
+import { useAccount, useBalance, useConnect, useDisconnect, useSendTransaction } from "wagmi";
 import type { SquadCompetition, SquadMessage, SquadRecord, SquadRoom } from "@/lib/squads";
 import { clubsForSport, slotsForSport, type LineupSlot, type PlayerOption, type PlayerSport } from "@/lib/player-catalog";
 import { xLayerTestnet } from "@/lib/arc";
@@ -73,6 +73,9 @@ export function SquadRoomPage({ id }: { id: string }) {
   });
   const { connectors, connectAsync, isPending } = useConnect();
   const { disconnect } = useDisconnect();
+  const { sendTransactionAsync, isPending: tipPending } = useSendTransaction();
+  const [tipTarget, setTipTarget] = useState("");
+  const [tipAmount, setTipAmount] = useState("0.01");
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
   const onlineMembers = room?.members.filter((member) => member.online) ?? [];
   const pinned = room?.messages.find((item) => item.pinned) ?? room?.messages[0] ?? null;
@@ -208,6 +211,38 @@ export function SquadRoomPage({ id }: { id: string }) {
     setTyping(false);
   }
 
+  async function sendTip() {
+    if (!tipTarget) {
+      return;
+    }
+    if (!address) {
+      setStatus("Connect wallet to tip a squad member.");
+      return;
+    }
+    if (!isAddress(tipTarget)) {
+      setStatus("This chat message does not have a valid wallet address to tip.");
+      return;
+    }
+    if (!Number(tipAmount)) {
+      setStatus("Enter a tip amount greater than 0.");
+      return;
+    }
+
+    try {
+      setStatus("Confirm the tip in your wallet.");
+      const hash = await sendTransactionAsync({
+        to: tipTarget as `0x${string}`,
+        value: parseUnits(tipAmount, xLayerTestnet.nativeCurrency.decimals),
+        chainId: xLayerTestnet.id
+      });
+      await roomAction({ action: "tip", to: tipTarget, amount: `${tipAmount} ${xLayerTestnet.nativeCurrency.symbol}`, txHash: hash });
+      setTipTarget("");
+      setStatus(`Tip sent. Tx ${hash.slice(0, 10)}...`);
+    } catch (error) {
+      setStatus(errorMessage(error, "Tip transaction failed."));
+    }
+  }
+
   async function uploadImage(file: File) {
     if (!file.type.startsWith("image/")) {
       setStatus("Choose an image file.");
@@ -313,7 +348,10 @@ export function SquadRoomPage({ id }: { id: string }) {
                         uploadImage={uploadImage}
                         sendMessage={sendMessage}
                         react={(messageId, emoji) => void roomAction({ action: "reaction", messageId, emoji })}
-                        tip={(to) => void roomAction({ action: "tip", to, amount: "5" })}
+                        tip={(to) => {
+                          setTipTarget(to);
+                          setTipAmount("0.01");
+                        }}
                       />
                     </motion.section>
                   ) : null}
@@ -339,6 +377,17 @@ export function SquadRoomPage({ id }: { id: string }) {
         ) : null}
       </div>
       <MiniGameModal modal={modal} onClose={() => setModal(null)} />
+      <TipModal
+        open={Boolean(tipTarget)}
+        to={tipTarget}
+        amount={tipAmount}
+        busy={tipPending}
+        symbol={xLayerTestnet.nativeCurrency.symbol}
+        balance={formattedBalance}
+        onAmountChange={setTipAmount}
+        onClose={() => setTipTarget("")}
+        onConfirm={() => void sendTip()}
+      />
     </main>
   );
 }
@@ -461,15 +510,15 @@ function ChatPanel({
         {attachment ? <p className="mb-2 rounded-lg border border-[#18e3bd]/25 bg-[#18e3bd]/10 px-3 py-2 text-xs font-bold text-[#80ffe2]">{attachment.type.toUpperCase()} attached</p> : null}
         {gifOpen ? (
           <div className="mb-3 rounded-lg border border-white/10 bg-[#070911] p-3 shadow-2xl">
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/45 px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/45 px-3 py-2 sm:flex-nowrap">
               <Search size={15} className="text-white/42" aria-hidden="true" />
               <input
-                className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/32"
+                className="min-h-10 min-w-[14rem] flex-1 bg-transparent text-base font-bold text-white outline-none placeholder:text-white/32"
                 value={gifQuery}
                 onChange={(event) => setGifQuery(event.target.value)}
-                placeholder="Search GIFs"
+                placeholder="Search GIFs: goal, Messi, Ronaldo, Mbappe, laugh..."
               />
-              <button className="text-xs font-black text-white/50 hover:text-white" type="button" onClick={() => setGifOpen(false)}>Close</button>
+              <button className="shrink-0 rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-black text-white/60 hover:text-white" type="button" onClick={() => setGifOpen(false)}>Close</button>
             </div>
             <div className="mt-3 grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
               {filteredGifs.map((gif) => (
