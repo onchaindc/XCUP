@@ -65,6 +65,7 @@ export type LiveMatchPlayer = {
 export type LiveMatchTeamLineup = {
   team: string;
   formation?: string;
+  coach?: string;
   starters: LiveMatchPlayer[];
   substitutes: LiveMatchPlayer[];
 };
@@ -76,6 +77,16 @@ export type LiveMatchScoringPlay = {
   minute?: string;
   text: string;
   score?: string;
+  penalty?: boolean;
+};
+
+export type LiveMatchSubstitution = {
+  id: string;
+  team?: string;
+  minute?: string;
+  playerIn?: string;
+  playerOut?: string;
+  text: string;
 };
 
 export type LiveMatchDetails = {
@@ -87,6 +98,7 @@ export type LiveMatchDetails = {
   event?: LiveSportEvent;
   stats: LiveMatchStat[];
   goals: LiveMatchScoringPlay[];
+  substitutions: LiveMatchSubstitution[];
   lineups: LiveMatchTeamLineup[];
 };
 

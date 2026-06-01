@@ -5,11 +5,13 @@ import { useAppStore } from "@/lib/app-store";
 import { applyTheme } from "@/lib/theme";
 
 export function ThemeInit() {
-  const theme = useAppStore((state) => state.preferences.theme);
+  const preferences = useAppStore((state) => state.preferences);
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    applyTheme(preferences.theme);
+    document.documentElement.dataset.reduceMotion = String(preferences.reduceMotion);
+    document.documentElement.style.setProperty("--x-cyan", preferences.accentColor);
+  }, [preferences.accentColor, preferences.reduceMotion, preferences.theme]);
 
   return null;
 }

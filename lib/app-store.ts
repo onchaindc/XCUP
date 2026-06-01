@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { DEFAULT_MATCHDAY_AUDIO } from "@/lib/audio-tracks";
 
 export type ThemeMode = "dark" | "light" | "system";
 export type WalletMode = "embedded" | "external" | null;
@@ -85,6 +86,11 @@ export type Preferences = {
     requireApproval: boolean;
     activeSessions: boolean;
   };
+  audio: {
+    trackId: string;
+    src: string;
+    volume: number;
+  };
 };
 
 type AppState = {
@@ -137,6 +143,11 @@ const defaultPreferences: Preferences = {
     approvalLimit: "100",
     requireApproval: true,
     activeSessions: true
+  },
+  audio: {
+    trackId: DEFAULT_MATCHDAY_AUDIO.id,
+    src: DEFAULT_MATCHDAY_AUDIO.src,
+    volume: 0.42
   }
 };
 
@@ -181,7 +192,8 @@ export const useAppStore = create<AppState>()(
             ...preferences,
             notifications: { ...state.preferences.notifications, ...(preferences.notifications ?? {}) },
             privacy: { ...state.preferences.privacy, ...(preferences.privacy ?? {}) },
-            security: { ...state.preferences.security, ...(preferences.security ?? {}) }
+            security: { ...state.preferences.security, ...(preferences.security ?? {}) },
+            audio: { ...state.preferences.audio, ...(preferences.audio ?? {}) }
           }
         })),
       addActivity: (activity) =>
@@ -229,7 +241,8 @@ export const useAppStore = create<AppState>()(
             ...(next?.preferences ?? {}),
             notifications: { ...current.preferences.notifications, ...(next?.preferences?.notifications ?? {}) },
             privacy: { ...current.preferences.privacy, ...(next?.preferences?.privacy ?? {}) },
-            security: { ...current.preferences.security, ...(next?.preferences?.security ?? {}) }
+            security: { ...current.preferences.security, ...(next?.preferences?.security ?? {}) },
+            audio: { ...current.preferences.audio, ...(next?.preferences?.audio ?? {}) }
           }
         };
       },

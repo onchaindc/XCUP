@@ -2,22 +2,29 @@
 
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useAppStore } from "@/lib/app-store";
+import { DEFAULT_MATCHDAY_AUDIO } from "@/lib/audio-tracks";
 
-const DEFAULT_AUDIO_SRC = "/audio/magic-in-the-air.mp3";
-const AUDIO_SRC = process.env.NEXT_PUBLIC_MATCHDAY_AUDIO_SRC || DEFAULT_AUDIO_SRC;
 const AUDIO_STATE_KEY = "xcup-audio-muted";
 let sharedAudio: HTMLAudioElement | null = null;
 let fadeTimer: number | null = null;
 
-function getAudio() {
+function getAudio(src: string) {
   if (typeof window === "undefined") {
     return null;
   }
   if (!sharedAudio) {
-    sharedAudio = new Audio(AUDIO_SRC);
+    sharedAudio = new Audio(src);
     sharedAudio.loop = true;
     sharedAudio.preload = "auto";
     sharedAudio.volume = 0;
+  } else if (sharedAudio.src !== new URL(src, window.location.href).href) {
+    const wasPlaying = !sharedAudio.paused && !sharedAudio.muted;
+    sharedAudio.src = src;
+    sharedAudio.load();
+    if (wasPlaying) {
+      void sharedAudio.play().then(() => fadeTo(sharedAudio!, sharedAudio!.volume || 0.42)).catch(() => undefined);
+    }
   }
   return sharedAudio;
 }
@@ -42,15 +49,19 @@ function fadeTo(audio: HTMLAudioElement, targetVolume: number, onDone?: () => vo
 }
 
 export function AppAudioButton() {
+  const audioPreference = useAppStore((state) => state.preferences.audio);
+  const audioSrc = audioPreference.src || DEFAULT_MATCHDAY_AUDIO.src;
+  const audioVolume = audioPreference.volume || 0.42;
   const [muted, setMuted] = useState(true);
   const [available, setAvailable] = useState(true);
   const mountedRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
+    setAvailable(true);
     const stored = window.localStorage.getItem(AUDIO_STATE_KEY);
     setMuted(stored !== "false");
-    const audio = getAudio();
+    const audio = getAudio(audioSrc);
     if (!audio) return;
 
     const onError = () => {
@@ -64,10 +75,17 @@ export function AppAudioButton() {
       mountedRef.current = false;
       audio.removeEventListener("error", onError);
     };
-  }, []);
+  }, [audioSrc]);
+
+  useEffect(() => {
+    const audio = getAudio(audioSrc);
+    if (audio && !muted && !audio.paused) {
+      fadeTo(audio, audioVolume);
+    }
+  }, [audioSrc, audioVolume, muted]);
 
   async function toggleAudio() {
-    const audio = getAudio();
+    const audio = getAudio(audioSrc);
     if (!audio || !available) {
       return;
     }
@@ -76,7 +94,7 @@ export function AppAudioButton() {
       try {
         audio.muted = false;
         await audio.play();
-        fadeTo(audio, 0.42);
+        fadeTo(audio, audioVolume);
         window.localStorage.setItem(AUDIO_STATE_KEY, "false");
         setMuted(false);
       } catch {

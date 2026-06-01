@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { LiveMatchDetails, LiveMatchPlayer, LiveMatchStat, LiveSportEvent } from "@/lib/sports";
+import type { LiveMatchDetails, LiveMatchPlayer, LiveMatchStat, LiveMatchSubstitution, LiveSportEvent } from "@/lib/sports";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 20;
@@ -19,7 +19,11 @@ type EspnCompetitor = {
     shortDisplayName?: string;
     abbreviation?: string;
     logo?: string;
+    coach?: { displayName?: string; name?: string };
+    coaches?: Array<{ displayName?: string; name?: string }>;
   };
+  coach?: { displayName?: string; name?: string };
+  coaches?: Array<{ displayName?: string; name?: string }>;
 };
 
 type EspnPlayer = {
@@ -56,6 +60,7 @@ type EspnEvent = {
       clock?: { displayValue?: string };
       team?: { displayName?: string; abbreviation?: string };
       athletesInvolved?: Array<{ displayName?: string; fullName?: string }>;
+      participants?: Array<{ athlete?: { displayName?: string; fullName?: string }; displayName?: string; fullName?: string }>;
       scoringPlay?: boolean;
       scoreValue?: number;
       homeScore?: number;
@@ -77,8 +82,10 @@ type EspnSummary = {
   };
   boxscore?: {
     teams?: Array<{
-      team?: { id?: string; displayName?: string };
+      team?: { id?: string; displayName?: string; coach?: { displayName?: string; name?: string }; coaches?: Array<{ displayName?: string; name?: string }> };
       statistics?: Array<{ name?: string; displayName?: string; label?: string; displayValue?: string; value?: number | string }>;
+      coach?: { displayName?: string; name?: string };
+      coaches?: Array<{ displayName?: string; name?: string }>;
     }>;
     form?: Array<{ team?: { id?: string }; formation?: string }>;
   };
@@ -91,9 +98,22 @@ type EspnSummary = {
     clock?: { displayValue?: string };
     team?: { displayName?: string; abbreviation?: string };
     athletesInvolved?: Array<{ displayName?: string; fullName?: string }>;
+    participants?: Array<{ athlete?: { displayName?: string; fullName?: string }; displayName?: string; fullName?: string }>;
     text?: string;
     homeScore?: number;
     awayScore?: number;
+    type?: { text?: string };
+  }>;
+  drives?: Array<{
+    plays?: Array<{
+      id?: string;
+      clock?: { displayValue?: string };
+      team?: { displayName?: string; abbreviation?: string };
+      athletesInvolved?: Array<{ displayName?: string; fullName?: string }>;
+      participants?: Array<{ athlete?: { displayName?: string; fullName?: string }; displayName?: string; fullName?: string }>;
+      type?: { text?: string };
+      text?: string;
+    }>;
   }>;
 };
 
@@ -211,6 +231,20 @@ function playerFrom(item: EspnPlayer): LiveMatchPlayer {
   };
 }
 
+function coachFrom(competitor?: EspnCompetitor, summary?: EspnSummary) {
+  const teamSummary = summary?.boxscore?.teams?.find((item) => item.team?.id === competitor?.team?.id);
+  const coach =
+    competitor?.coach ??
+    competitor?.coaches?.[0] ??
+    competitor?.team?.coach ??
+    competitor?.team?.coaches?.[0] ??
+    teamSummary?.coach ??
+    teamSummary?.coaches?.[0] ??
+    teamSummary?.team?.coach ??
+    teamSummary?.team?.coaches?.[0];
+  return coach?.displayName ?? coach?.name;
+}
+
 function normalizeLineups(competitors: EspnCompetitor[], summary?: EspnSummary) {
   return competitors.map((competitor) => {
     const roster = competitor.lineup ?? competitor.roster ?? summary?.rosters?.find((item) => item.team?.id === competitor.team?.id)?.roster ?? [];
@@ -219,10 +253,15 @@ function normalizeLineups(competitors: EspnCompetitor[], summary?: EspnSummary) 
     return {
       team: competitor.team?.displayName ?? "Team",
       formation,
+      coach: coachFrom(competitor, summary),
       starters: players.filter((player) => player.starter).slice(0, 11),
       substitutes: players.filter((player) => !player.starter).slice(0, 12)
     };
   });
+}
+
+function participantName(participant?: { athlete?: { displayName?: string; fullName?: string }; displayName?: string; fullName?: string }) {
+  return participant?.athlete?.displayName ?? participant?.athlete?.fullName ?? participant?.displayName ?? participant?.fullName;
 }
 
 function normalizeGoals(event?: EspnEvent, summary?: EspnSummary) {
@@ -233,8 +272,33 @@ function normalizeGoals(event?: EspnEvent, summary?: EspnSummary) {
     athlete: play.athletesInvolved?.[0]?.displayName ?? play.athletesInvolved?.[0]?.fullName,
     minute: play.clock?.displayValue,
     text: play.text ?? "Scoring play",
-    score: typeof play.homeScore === "number" && typeof play.awayScore === "number" ? `${play.awayScore}-${play.homeScore}` : undefined
+    score: typeof play.homeScore === "number" && typeof play.awayScore === "number" ? `${play.awayScore}-${play.homeScore}` : undefined,
+    penalty: /penalty|spot kick/i.test(`${play.type?.text ?? ""} ${play.text ?? ""}`)
   }));
+}
+
+function normalizeSubstitutions(event?: EspnEvent, summary?: EspnSummary): LiveMatchSubstitution[] {
+  const detailPlays = event?.competitions?.[0]?.details ?? [];
+  const drivePlays = summary?.drives?.flatMap((drive) => drive.plays ?? []) ?? [];
+  return [...detailPlays, ...drivePlays]
+    .filter((play) => /substitution|substitute|subbed/i.test(`${play.type?.text ?? ""} ${play.text ?? ""}`))
+    .map((play, index) => {
+      const names = [
+        play.athletesInvolved?.[0]?.displayName ?? play.athletesInvolved?.[0]?.fullName,
+        play.athletesInvolved?.[1]?.displayName ?? play.athletesInvolved?.[1]?.fullName,
+        participantName(play.participants?.[0]),
+        participantName(play.participants?.[1])
+      ].filter(Boolean) as string[];
+
+      return {
+        id: play.id ?? `${index}`,
+        team: play.team?.displayName ?? play.team?.abbreviation,
+        minute: play.clock?.displayValue,
+        playerIn: names[0],
+        playerOut: names[1],
+        text: play.text ?? "Substitution"
+      };
+    });
 }
 
 export async function GET(request: NextRequest) {
@@ -258,6 +322,7 @@ export async function GET(request: NextRequest) {
         event: normalizedEvent,
         stats: [],
         goals: [],
+        substitutions: [],
         lineups: []
       } satisfies LiveMatchDetails,
       { status: 409 }
@@ -281,6 +346,7 @@ export async function GET(request: NextRequest) {
       return stats.length ? stats : fallbackScoreStats(home, away);
     })(),
     goals: normalizeGoals(event, safeSummary),
+    substitutions: normalizeSubstitutions(event, safeSummary),
     lineups: normalizeLineups(competitors, safeSummary)
   } satisfies LiveMatchDetails);
 }

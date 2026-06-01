@@ -76,7 +76,7 @@ export function LiveMatchPage({ id }: { id: string }) {
               <p className="mt-4 text-xs font-bold text-white/42">Source: {details.source}. Refreshes every 20 seconds while open.</p>
             </section>
 
-            <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_28rem]">
+            <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
               <div className="grid gap-4">
                 <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
                   <div className="flex items-center justify-between gap-3">
@@ -86,9 +86,23 @@ export function LiveMatchPage({ id }: { id: string }) {
                     </div>
                     <BarChart3 size={18} className="text-[#18e3bd]" aria-hidden="true" />
                   </div>
-                  <div className="mt-4 grid gap-2">
+                  <div className="mt-4 grid gap-2 md:grid-cols-2">
                     {details.stats.map((stat) => <StatRow key={stat.label} label={stat.label} away={stat.away} home={stat.home} />)}
                     {!details.stats.length ? <p className="rounded-lg border border-white/10 bg-black/35 p-4 text-sm text-white/60">The source has not published live stat rows for this match yet.</p> : null}
+                  </div>
+                  <div className="mt-4 rounded-lg border border-white/10 bg-black/25 p-3">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/42">Substitutions</p>
+                    <div className="mt-3 grid gap-2 md:grid-cols-2">
+                      {details.substitutions.slice(0, 10).map((substitution) => (
+                        <div key={substitution.id} className="rounded-lg border border-white/10 bg-black/35 p-2 text-sm">
+                          <p className="font-black text-white">{substitution.team ?? "Team"} {substitution.minute ? `- ${substitution.minute}` : ""}</p>
+                          <p className="mt-1 text-xs leading-5 text-white/58">
+                            {substitution.playerIn && substitution.playerOut ? `${substitution.playerIn} for ${substitution.playerOut}` : substitution.text}
+                          </p>
+                        </div>
+                      ))}
+                      {!details.substitutions.length ? <p className="text-sm text-white/58">No substitutions published yet.</p> : null}
+                    </div>
                   </div>
                 </section>
 
@@ -97,8 +111,11 @@ export function LiveMatchPage({ id }: { id: string }) {
                   <div className="mt-4 grid gap-2">
                     {details.goals.map((goal) => (
                       <div key={goal.id} className="rounded-lg border border-white/10 bg-black/35 p-3">
-                        <p className="font-black text-white">{goal.athlete ?? goal.team ?? "Scoring play"} {goal.minute ? `- ${goal.minute}` : ""}</p>
-                        <p className="mt-1 text-sm leading-6 text-white/58">{goal.text}{goal.score ? ` (${goal.score})` : ""}</p>
+                        <p className="font-black text-white">{goal.athlete ?? "Scoring play"} {goal.team ? `- ${goal.team}` : ""} {goal.minute ? `- ${goal.minute}` : ""}</p>
+                        <p className="mt-1 text-sm leading-6 text-white/58">
+                          {goal.penalty ? "Penalty goal" : "Open-play goal"}{goal.score ? ` (${goal.score})` : ""}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-white/42">{goal.text}</p>
                       </div>
                     ))}
                     {!details.goals.length ? <p className="rounded-lg border border-white/10 bg-black/35 p-4 text-sm text-white/60">No goals or scoring plays have been published yet.</p> : null}
@@ -193,6 +210,10 @@ function LineupPanel({ lineup }: { lineup: LiveMatchTeamLineup }) {
           </div>
         </div>
       ) : null}
+      <div className="mt-4 rounded-lg border border-white/10 bg-black/35 p-3">
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/42">Coach / manager</p>
+        <p className="mt-1 text-sm font-black text-white">{lineup.coach ?? "Not published by source"}</p>
+      </div>
     </section>
   );
 }

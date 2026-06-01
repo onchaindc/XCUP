@@ -8,6 +8,7 @@ import {
   Crown,
   Flag,
   Medal,
+  Music2,
   Palette,
   ShieldCheck,
   Sparkles,
@@ -20,6 +21,8 @@ import { formatUnits } from "viem";
 import { useAccount, useBalance, useConnect, useDisconnect } from "wagmi";
 import { useAppStore, type Preferences, type UserProfile } from "@/lib/app-store";
 import { xLayerTestnet } from "@/lib/arc";
+import { DEFAULT_MATCHDAY_AUDIO, MATCHDAY_AUDIO_TRACKS } from "@/lib/audio-tracks";
+import { clearLocalAuthSession, readLocalAuthSession, type LocalAuthSession } from "@/lib/session";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
@@ -103,6 +106,7 @@ export function ProfilePage({ initialTab = "overview" }: { initialTab?: ProfileT
         {walletError ? <p className="mb-4 rounded-lg border border-[#ff5c39]/25 bg-[#ff5c39]/10 px-4 py-3 text-sm font-bold text-[#ffb09d]">{walletError}</p> : null}
         <ProfileHero
           profile={profile}
+          preferences={preferences}
           avatarInputRef={avatarInputRef}
           bannerInputRef={bannerInputRef}
           uploadProfileImage={uploadProfileImage}
@@ -118,11 +122,11 @@ export function ProfilePage({ initialTab = "overview" }: { initialTab?: ProfileT
         </section>
         <AnimatePresence mode="wait">
           <motion.section key={tab} className="mt-4" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-            {tab === "overview" ? <OverviewTab profile={profile} activities={activities} /> : null}
+            {tab === "overview" ? <OverviewTab profile={profile} preferences={preferences} activities={activities} /> : null}
             {tab === "predictions" ? <PredictionsTab profile={profile} /> : null}
             {tab === "fantasy" ? <FantasyTab /> : null}
             {tab === "achievements" ? <AchievementsTab /> : null}
-            {tab === "activity" ? <ActivityTab activities={activities} /> : null}
+            {tab === "activity" ? <ActivityTab preferences={preferences} activities={activities} /> : null}
             {tab === "settings" ? (
               <SettingsTab
                 profile={profile}
@@ -143,11 +147,13 @@ export function ProfilePage({ initialTab = "overview" }: { initialTab?: ProfileT
 
 function ProfileHero({
   profile,
+  preferences,
   avatarInputRef,
   bannerInputRef,
   uploadProfileImage
 }: {
   profile: UserProfile;
+  preferences: Preferences;
   avatarInputRef: React.RefObject<HTMLInputElement | null>;
   bannerInputRef: React.RefObject<HTMLInputElement | null>;
   uploadProfileImage: (file: File, field: "avatarUrl" | "bannerUrl") => void | Promise<void>;
@@ -178,8 +184,14 @@ function ProfileHero({
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Competitor identity</p>
             <h1 className="mt-1 text-3xl font-black leading-none text-white sm:text-5xl">{profile.displayName || "Unnamed manager"}</h1>
-            <p className="mt-2 text-sm font-bold text-white/54">{profile.username || "@manager"} - {profile.squadAffiliation || "No squad yet"}</p>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62">{profile.bio || "Set a short status in settings."}</p>
+            {preferences.privacy.publicProfile ? (
+              <>
+                <p className="mt-2 text-sm font-bold text-white/54">{profile.username || "@manager"} - {profile.squadAffiliation || "No squad yet"}</p>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62">{profile.bio || "Set a short status in settings."}</p>
+              </>
+            ) : (
+              <p className="mt-3 max-w-2xl rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm font-bold text-white/62">Private profile is enabled. Public bio, handle, and squad affiliation are hidden.</p>
+            )}
           </div>
         </div>
         <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-4">
@@ -204,7 +216,7 @@ function ProfileHero({
   );
 }
 
-function OverviewTab({ profile, activities }: { profile: UserProfile; activities: Array<{ id: string; title: string; detail: string }> }) {
+function OverviewTab({ profile, preferences, activities }: { profile: UserProfile; preferences: Preferences; activities: Array<{ id: string; title: string; detail: string }> }) {
   const stats = [
     ["Accuracy", `${profile.predictionAccuracy ?? 0}%`],
     ["Win streak", String(profile.winStreak ?? 0)],
@@ -221,8 +233,9 @@ function OverviewTab({ profile, activities }: { profile: UserProfile; activities
       <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
         <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Recent activity</p>
         <div className="mt-4 grid gap-2">
-          {activities.slice(0, 5).map((activity) => <TimelineItem key={activity.id} title={activity.title} detail={activity.detail} />)}
-          {!activities.length ? <p className="text-sm text-white/58">No activity yet.</p> : null}
+          {preferences.privacy.showActivity ? activities.slice(0, 5).map((activity) => <TimelineItem key={activity.id} title={activity.title} detail={activity.detail} />) : null}
+          {!preferences.privacy.showActivity ? <p className="text-sm text-white/58">Activity is hidden by your privacy settings.</p> : null}
+          {preferences.privacy.showActivity && !activities.length ? <p className="text-sm text-white/58">No activity yet.</p> : null}
         </div>
       </section>
     </div>
@@ -241,13 +254,14 @@ function AchievementsTab() {
   return <Panel title="Trophy case" empty="No achievements unlocked yet. Seasonal badges and NFT achievements appear here when earned." />;
 }
 
-function ActivityTab({ activities }: { activities: Array<{ id: string; title: string; detail: string }> }) {
+function ActivityTab({ preferences, activities }: { preferences: Preferences; activities: Array<{ id: string; title: string; detail: string }> }) {
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Activity timeline</p>
       <div className="mt-4 grid gap-2">
-        {activities.map((activity) => <TimelineItem key={activity.id} title={activity.title} detail={activity.detail} />)}
-        {!activities.length ? <p className="text-sm text-white/58">No chat, tips, uploads, or challenge wins yet.</p> : null}
+        {preferences.privacy.showActivity ? activities.map((activity) => <TimelineItem key={activity.id} title={activity.title} detail={activity.detail} />) : null}
+        {!preferences.privacy.showActivity ? <p className="text-sm text-white/58">Activity is hidden by your privacy settings.</p> : null}
+        {preferences.privacy.showActivity && !activities.length ? <p className="text-sm text-white/58">No chat, tips, uploads, or challenge wins yet.</p> : null}
       </div>
     </section>
   );
@@ -283,6 +297,40 @@ function SettingsTab({
     ["Show activity", "showActivity"],
     ["Messages", "directMessages"]
   ] as const;
+  const [settingsStatus, setSettingsStatus] = useState("");
+  const [currentSession, setCurrentSession] = useState<LocalAuthSession | null>(null);
+  const selectedTrack = MATCHDAY_AUDIO_TRACKS.find((track) => track.id === preferences.audio.trackId) ?? DEFAULT_MATCHDAY_AUDIO;
+  const customAudio = preferences.audio.trackId === "custom";
+
+  useEffect(() => {
+    setCurrentSession(readLocalAuthSession());
+  }, []);
+
+  async function toggleNotification(label: string, key: (typeof notificationItems)[number][1]) {
+    const nextEnabled = !preferences.notifications[key];
+    if (nextEnabled && typeof window !== "undefined" && "Notification" in window) {
+      const permission = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
+      if (permission !== "granted") {
+        setSettingsStatus("Browser notifications are blocked. The preference was not enabled.");
+        return;
+      }
+      new Notification(`X Cup ${label}`, { body: `${label} notifications are now active.` });
+    }
+    updatePreferences({ notifications: { ...preferences.notifications, [key]: nextEnabled } });
+    setSettingsStatus(nextEnabled ? `${label} notifications enabled.` : `${label} notifications disabled.`);
+  }
+
+  function updateActiveSessions(enabled: boolean) {
+    updatePreferences({ security: { ...preferences.security, activeSessions: enabled } });
+    if (!enabled) {
+      clearLocalAuthSession();
+      setCurrentSession(null);
+      setSettingsStatus("Saved auth sessions cleared on this device.");
+      return;
+    }
+    setSettingsStatus("Active session tracking enabled for future logins.");
+  }
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-4">
@@ -299,7 +347,8 @@ function SettingsTab({
       </section>
       <section className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-4">
         <SectionTitle icon={Bell} title="Notifications" />
-        {notificationItems.map(([label, key]) => <ToggleRow key={key} label={label} enabled={preferences.notifications[key]} toggle={() => updatePreferences({ notifications: { ...preferences.notifications, [key]: !preferences.notifications[key] } })} />)}
+        {notificationItems.map(([label, key]) => <ToggleRow key={key} label={label} enabled={preferences.notifications[key]} toggle={() => void toggleNotification(label, key)} />)}
+        {settingsStatus ? <p className="rounded-lg border border-white/10 bg-black/35 p-3 text-sm font-bold text-white/62">{settingsStatus}</p> : null}
       </section>
       <section className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-4">
         <SectionTitle icon={ShieldCheck} title="Privacy" />
@@ -313,9 +362,46 @@ function SettingsTab({
           ))}
         </div>
         <ToggleRow label="Reduced motion" enabled={preferences.reduceMotion} toggle={() => updatePreferences({ reduceMotion: !preferences.reduceMotion })} />
+        <SectionTitle icon={Music2} title="Matchday music" />
+        <select
+          className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-sm font-black text-white outline-none focus:border-[#18e3bd]/60"
+          value={preferences.audio.trackId}
+          onChange={(event) => {
+            const track = MATCHDAY_AUDIO_TRACKS.find((item) => item.id === event.target.value);
+            if (track) {
+              updatePreferences({ audio: { ...preferences.audio, trackId: track.id, src: track.src } });
+              return;
+            }
+            updatePreferences({ audio: { ...preferences.audio, trackId: "custom", src: preferences.audio.src || DEFAULT_MATCHDAY_AUDIO.src } });
+          }}
+        >
+          {MATCHDAY_AUDIO_TRACKS.map((track) => <option key={track.id} value={track.id}>{track.label}</option>)}
+          <option value="custom">Custom uploaded file path</option>
+        </select>
+        {customAudio ? (
+          <input
+            className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#18e3bd]/60"
+            placeholder="/audio/your-file.mp3"
+            value={preferences.audio.src}
+            onChange={(event) => updatePreferences({ audio: { ...preferences.audio, src: event.target.value || DEFAULT_MATCHDAY_AUDIO.src } })}
+          />
+        ) : (
+          <p className="rounded-lg border border-white/10 bg-black/35 p-3 text-xs font-bold text-white/54">Now selected: {selectedTrack.label}</p>
+        )}
+        <label className="grid gap-2 text-sm font-bold text-white/58">
+          Music volume
+          <input className="accent-[#18e3bd]" type="range" min="0.12" max="0.75" step="0.03" value={preferences.audio.volume} onChange={(event) => updatePreferences({ audio: { ...preferences.audio, volume: Number(event.target.value) } })} />
+        </label>
         <SectionTitle icon={Wallet} title="Security" />
         <ToggleRow label="Wallet approvals" enabled={preferences.security.requireApproval} toggle={() => updatePreferences({ security: { ...preferences.security, requireApproval: !preferences.security.requireApproval } })} />
-        <ToggleRow label="Active sessions" enabled={preferences.security.activeSessions} toggle={() => updatePreferences({ security: { ...preferences.security, activeSessions: !preferences.security.activeSessions } })} />
+        <label className="grid gap-2 text-sm font-bold text-white/58">
+          Approval limit
+          <input className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-sm font-bold text-white outline-none focus:border-[#18e3bd]/60" value={preferences.security.approvalLimit} onChange={(event) => updatePreferences({ security: { ...preferences.security, approvalLimit: event.target.value } })} placeholder="100" />
+        </label>
+        <ToggleRow label="Active sessions" enabled={preferences.security.activeSessions} toggle={() => updateActiveSessions(!preferences.security.activeSessions)} />
+        <div className="rounded-lg border border-white/10 bg-black/35 p-3 text-xs font-bold text-white/54">
+          {currentSession && preferences.security.activeSessions ? `Current session: ${currentSession.mode} wallet unlocked ${new Date(currentSession.unlockedAt).toLocaleString()}` : "No saved auth session on this device."}
+        </div>
       </section>
     </div>
   );

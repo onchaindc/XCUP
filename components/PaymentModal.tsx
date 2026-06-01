@@ -39,13 +39,16 @@ export function PaymentModal({
   const [status, setStatus] = useState("");
   const [hash, setHash] = useState<`0x${string}` | "">("");
   const [busy, setBusy] = useState(false);
+  const [approvalConfirmed, setApprovalConfirmed] = useState(false);
   const [merchantToken, setMerchantToken] = useState<string>(arcTestnet.nativeCurrency.symbol);
   const [requestLink, setRequestLink] = useState("");
   const [copied, setCopied] = useState(false);
-  const { walletMode, addActivity, updateActivity } = useAppStore();
+  const { walletMode, preferences, addActivity, updateActivity } = useAppStore();
   const { sendTransactionAsync } = useSendTransaction();
   const insufficient = Number(amount || 0) > Number(balance || 0);
   const valid = isAddressLike(recipient) && Number(amount) > 0 && !insufficient;
+  const approvalLimit = Number(preferences.security.approvalLimit || 0);
+  const needsApproval = preferences.security.requireApproval && Number(amount || 0) >= approvalLimit;
   const isReceive = mode === "Receive";
   const isMerchant = mode === "Pay Merchant";
   const requestUrl = address
@@ -178,7 +181,7 @@ export function PaymentModal({
               <label className="grid gap-2 text-sm font-bold text-muted">
                 Amount
                 <div className="flex min-w-0 rounded-2xl border border-line bg-black/20">
-                  <input className="min-w-0 flex-1 bg-transparent px-4 py-3 text-2xl font-black text-white outline-none" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" />
+                <input className="min-w-0 flex-1 bg-transparent px-4 py-3 text-2xl font-black text-white outline-none" value={amount} onChange={(event) => { setAmount(event.target.value); setApprovalConfirmed(false); }} placeholder="0.00" />
                   {isMerchant ? (
                     <select className="max-w-24 bg-transparent px-3 text-sm font-black text-white outline-none sm:max-w-none sm:px-4" value={merchantToken} onChange={(event) => setMerchantToken(event.target.value)}>
                       {["USDC", "ETH", "WBTC", "EURC"].map((token) => (
@@ -194,6 +197,14 @@ export function PaymentModal({
                 <label className="grid gap-2 text-sm font-bold text-muted">
                   Wallet passcode
                   <input className="rounded-2xl border border-line bg-black/20 px-4 py-3 text-white outline-none" type="password" value={passcode} onChange={(event) => setPasscode(event.target.value)} />
+                </label>
+              ) : null}
+              {needsApproval ? (
+                <label className="flex items-start gap-3 rounded-2xl border border-arcblue/25 bg-arcblue/10 p-4 text-sm font-bold text-white">
+                  <input className="mt-1 h-4 w-4 accent-arcblue" type="checkbox" checked={approvalConfirmed} onChange={(event) => setApprovalConfirmed(event.target.checked)} />
+                  <span>
+                    Require approval is on for payments at or above {approvalLimit} {arcTestnet.nativeCurrency.symbol}. Confirm you reviewed recipient, amount, and network.
+                  </span>
                 </label>
               ) : null}
               <div className="rounded-2xl border border-line bg-white/[0.06] p-4 text-sm text-muted">
@@ -220,7 +231,7 @@ export function PaymentModal({
                 <Copy size={18} aria-hidden="true" />
                 Copy Payment Link
               </Button>
-              <Button onClick={() => void confirmPayment()} disabled={!valid || busy || !onArc || (walletMode === "embedded" && passcode.length < 6)}>
+              <Button onClick={() => void confirmPayment()} disabled={!valid || busy || !onArc || (walletMode === "embedded" && passcode.length < 6) || (needsApproval && !approvalConfirmed)}>
                 <Send size={18} aria-hidden="true" />
                 {busy ? "Submitting..." : "Confirm & Sign"}
               </Button>
