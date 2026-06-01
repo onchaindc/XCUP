@@ -23,6 +23,8 @@ const confidenceXp: Record<ArenaConfidence, number> = { Low: 10, Medium: 20, Hig
 const outcomeLabels: Record<ArenaOutcome, string> = { HOME: "Home wins", DRAW: "Draw", AWAY: "Away wins" };
 const sportFilters: Array<"All" | ArenaSport> = ["All", "Football", "Basketball", "Baseball", "Esports"];
 const ranges = ["Weekly", "All-time"] as const;
+const chainStatusMap = ["LOCKED", "WON", "LOST", "EXITED"] as const;
+const chainOutcomeMap: ArenaOutcome[] = ["HOME", "DRAW", "AWAY"];
 
 function readStored<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") {
@@ -109,7 +111,14 @@ export function ArenaPage() {
     chainId: xLayerMainnet.id,
     query: { enabled: Boolean(challengeAddress) }
   });
-  useReadContract({
+  const { data: vaultResolver } = useReadContract({
+    address: challengeAddress,
+    abi: arenaChallengeAbi,
+    functionName: "resolver",
+    chainId: xLayerMainnet.id,
+    query: { enabled: Boolean(challengeAddress) }
+  });
+  const { data: userSlips } = useReadContract({
     address: challengeAddress,
     abi: arenaChallengeAbi,
     functionName: "getUserSlips",
@@ -120,6 +129,7 @@ export function ArenaPage() {
   const formattedBalance = balance ? `${Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} ${balance.symbol}` : "0.0000 OKB";
   const visibleMatches = matches.filter((match) => sport === "All" || match.sport === sport);
   const isVaultOwner = Boolean(address && vaultOwner && address.toLowerCase() === vaultOwner.toLowerCase());
+  const isVaultResolver = Boolean(address && vaultResolver && address.toLowerCase() === vaultResolver.toLowerCase());
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowLoader(false), 800);
@@ -165,6 +175,41 @@ export function ArenaPage() {
       window.clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    if (!userSlips?.length) {
+      return;
+    }
+    setSlips((current) => {
+      const byChainId = new Map(current.filter((slip) => slip.chainSlipId).map((slip) => [slip.chainSlipId!, slip]));
+      const merged = userSlips.map((slip) => {
+        const chainSlipId = slip.id.toString();
+        const existing = byChainId.get(chainSlipId);
+        const matchedArena = matches.find((match) => keccak256(toBytes(match.id)) === slip.matchId);
+        return {
+          id: existing?.id ?? `chain-${chainSlipId}`,
+          chainSlipId,
+          matchId: matchedArena?.id ?? existing?.matchId ?? slip.matchId,
+          matchName: matchedArena ? matchName(matchedArena) : existing?.matchName ?? `Match ${slip.matchId.slice(0, 10)}...`,
+          sport: matchedArena?.sport ?? existing?.sport ?? "Football",
+          predictedOutcome: chainOutcomeMap[Number(slip.outcome)] ?? "HOME",
+          confidence: existing?.confidence ?? "Medium",
+          reasoning: existing?.reasoning ?? "",
+          asset: Number(slip.asset) === 1 ? "USDC" : "OKB",
+          amount: existing?.amount ?? formatUnits(slip.amount, Number(slip.asset) === 1 ? ARENA_ASSET_DECIMALS.USDC : ARENA_ASSET_DECIMALS.OKB),
+          amountUnits: slip.amount.toString(),
+          status: chainStatusMap[Number(slip.status)] ?? "LOCKED",
+          txHash: existing?.txHash,
+          actualResult: existing?.actualResult,
+          rewardClaimed: slip.rewardClaimed,
+          createdAt: existing?.createdAt ?? new Date(Number(slip.createdAt) * 1000).toISOString()
+        } satisfies ArenaSlip;
+      });
+      const mergedIds = new Set(merged.map((slip) => slip.chainSlipId));
+      const pendingLocal = current.filter((slip) => !slip.chainSlipId || !mergedIds.has(slip.chainSlipId));
+      return [...pendingLocal, ...merged].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    });
+  }, [matches, userSlips]);
 
   useEffect(() => {
     async function refreshResults() {
@@ -420,6 +465,30 @@ export function ArenaPage() {
     }
   }
 
+  async function resolveSlipMatch(matchId: string, result: ArenaOutcome) {
+    if (!challengeAddress) {
+      setToast("Configure the vault address first.");
+      return;
+    }
+    try {
+      await writeContractAsync({
+        address: challengeAddress,
+        abi: arenaChallengeAbi,
+        functionName: "resolveMatch",
+        args: [keccak256(toBytes(matchId)), ARENA_OUTCOME_ID[result]],
+        chainId: xLayerMainnet.id
+      });
+      setSlips((current) => current.map((slip) => (
+        slip.matchId === matchId && slip.status === "LOCKED"
+          ? { ...slip, actualResult: result, status: slip.predictedOutcome === result ? "WON" : "LOST" }
+          : slip
+      )));
+      setToast("Match resolution submitted onchain.");
+    } catch (error) {
+      setToast(displayError(error, "Match resolution failed."));
+    }
+  }
+
   return (
     <main className="x-cup-bg min-h-[100dvh] overflow-x-clip text-white">
       {showLoader ? <KickoffLoader onSkip={() => setShowLoader(false)} /> : null}
@@ -456,6 +525,7 @@ export function ArenaPage() {
           <aside className="grid content-start gap-4">
             <MySlips slips={slips} onExit={(slip) => void exitSlip(slip)} onClaim={(slip) => void claimSlip(slip)} busy={isWriting} />
             {isVaultOwner ? <VaultAdminPanel busy={isWriting} onFund={(amount, asset) => void fundVault(amount, asset)} onWithdraw={(amount, asset) => void withdrawVault(amount, asset)} /> : null}
+            {isVaultOwner || isVaultResolver ? <ResolverPanel slips={slips} busy={isWriting} onResolve={(matchId, result) => void resolveSlipMatch(matchId, result)} /> : null}
             <ArenaHeadlines news={news} />
             <ArenaLeaderboard slips={slips} stats={stats} sport={sport} range={range} setRange={setRange} />
           </aside>
@@ -685,6 +755,43 @@ function VaultAdminPanel({ busy, onFund, onWithdraw }: { busy: boolean; onFund: 
         <input className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-white outline-none" value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} placeholder={`${asset} amount to withdraw`} />
         <Button variant="secondary" disabled={busy || !Number(withdrawAmount)} onClick={() => onWithdraw(withdrawAmount, asset)}>Withdraw to Owner Wallet</Button>
       </div>
+    </Card>
+  );
+}
+
+function ResolverPanel({ slips, busy, onResolve }: { slips: ArenaSlip[]; busy: boolean; onResolve: (matchId: string, result: ArenaOutcome) => void }) {
+  const pendingMatches = Array.from(
+    new Map(
+      slips
+        .filter((slip) => slip.status === "LOCKED")
+        .map((slip) => [slip.matchId, slip])
+    ).values()
+  );
+  const [selectedMatchId, setSelectedMatchId] = useState("");
+  const [result, setResult] = useState<ArenaOutcome>("HOME");
+
+  useEffect(() => {
+    if (!selectedMatchId && pendingMatches[0]) {
+      setSelectedMatchId(pendingMatches[0].matchId);
+    }
+  }, [pendingMatches, selectedMatchId]);
+
+  return (
+    <Card className="p-4">
+      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Match Resolver</p>
+      <p className="mt-2 text-sm leading-6 text-white/58">Resolve locked challenge matches onchain when the final result is known.</p>
+      <div className="mt-4 grid gap-2">
+        <select className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-white outline-none" value={selectedMatchId} onChange={(event) => setSelectedMatchId(event.target.value)}>
+          {pendingMatches.map((slip) => <option key={slip.matchId} value={slip.matchId}>{slip.matchName}</option>)}
+        </select>
+        <select className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-white outline-none" value={result} onChange={(event) => setResult(event.target.value as ArenaOutcome)}>
+          <option className="bg-surface" value="HOME">Home wins</option>
+          <option className="bg-surface" value="DRAW">Draw</option>
+          <option className="bg-surface" value="AWAY">Away wins</option>
+        </select>
+        <Button disabled={busy || !selectedMatchId} onClick={() => onResolve(selectedMatchId, result)}>Resolve Match Onchain</Button>
+      </div>
+      {!pendingMatches.length ? <p className="mt-3 rounded-lg border border-white/10 bg-black/25 p-3 text-sm text-muted">No locked matches waiting for manual resolution.</p> : null}
     </Card>
   );
 }

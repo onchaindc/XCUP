@@ -38,8 +38,8 @@ import { WorldCupCountdown } from "@/components/WorldCupCountdown";
 
 const topNav = [
   { label: "Home", href: "/", icon: Home, iconOnly: true },
-  { label: "Arena", href: "/arena", icon: Trophy },
-  { label: "Markets", href: "/markets", icon: Activity },
+  { label: "Predictions", href: "/arena", icon: Trophy },
+  { label: "Live Board", href: "/arena", icon: Activity },
   { label: "GameFi", href: "/gamefi", icon: Gamepad2 },
   { label: "Squads", href: "/squads", icon: Users },
   { label: "Agent", href: "/agent", icon: Bot }
@@ -508,8 +508,8 @@ function Hero({
               Trade the match. Rally the squad. Prove the win.
             </h1>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-black text-black transition hover:bg-[#18e3bd]" href="/markets">
-                Open Markets
+              <Link className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-black text-black transition hover:bg-[#18e3bd]" href="/arena">
+                Open Predictions
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
               <Link className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-black text-white transition hover:bg-white/12" href="/squads">
@@ -526,7 +526,7 @@ function Hero({
             </p>
             <p className="mt-3 text-xl font-black text-white">{featured ? formatLiveEventMatchup(featured) : feedError || leadNews?.title || "No live match available right now"}</p>
             <p className="mt-2 text-sm leading-6 text-white/58">
-              {featured ? `${featured.league} - ${featured.status.detail}` : leadNews ? "Latest football headline while matches wait for the next live or scheduled event." : "Markets refresh from the real sports feed."}
+              {featured ? `${featured.league} - ${featured.status.detail}` : leadNews ? "Latest football headline while matches wait for the next live or scheduled event." : "Predictions refresh from the real sports feed."}
             </p>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -561,8 +561,8 @@ function LiveBoard({ events, loading, refreshing }: { events: LiveSportEvent[]; 
         </div>
         <div className="flex items-center gap-2">
           {refreshing ? <span className="rounded-lg border border-[#18e3bd]/20 bg-[#18e3bd]/10 px-2 py-1 text-[11px] font-black uppercase text-[#80ffe2]">Syncing</span> : null}
-          <Link className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-black text-white transition hover:bg-white/12" href="/markets">
-            All markets
+          <Link className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-black text-white transition hover:bg-white/12" href="/arena">
+            All predictions
             <ArrowRight size={14} aria-hidden="true" />
           </Link>
         </div>

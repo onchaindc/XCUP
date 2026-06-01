@@ -48,9 +48,9 @@ export function LiveMatchPage({ id }: { id: string }) {
   return (
     <main className="x-cup-bg min-h-[100dvh] overflow-x-clip text-white">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[92rem] flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-8">
-        <Link className="mb-4 inline-flex w-fit items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-black text-white transition hover:bg-white/10" href="/markets">
+        <Link className="mb-4 inline-flex w-fit items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-black text-white transition hover:bg-white/10" href="/arena">
           <ArrowLeft size={16} aria-hidden="true" />
-          Markets
+          Predictions
         </Link>
 
         {loading ? <div className="h-80 animate-pulse rounded-lg border border-white/10 bg-white/[0.045]" /> : null}

@@ -55,6 +55,16 @@ export const arenaChallengeAbi = [
   },
   {
     type: "function",
+    name: "resolveMatch",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "matchId", type: "bytes32" },
+      { name: "result", type: "uint8" }
+    ],
+    outputs: []
+  },
+  {
+    type: "function",
     name: "getUserSlips",
     stateMutability: "view",
     inputs: [{ name: "user", type: "address" }],
@@ -141,6 +151,13 @@ export const arenaChallengeAbi = [
       { name: "to", type: "address" }
     ],
     outputs: []
+  },
+  {
+    type: "function",
+    name: "resolver",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "resolver", type: "address" }]
   },
   {
     type: "event",
