@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  expandFootballPosition,
   normalizeBasketballPosition,
   normalizeFootballPosition,
   playerClubs,
@@ -98,6 +99,7 @@ async function fetchEspnRoster(sport: PlayerSport, league: string, clubName: str
   const data = await fetchJson<EspnRoster>(`https://site.api.espn.com/apis/site/v2/sports/${slug}/teams/${teamId}/roster`);
   const athletes = data?.athletes ?? [];
   const normalizedPosition = sport === "football" ? normalizeFootballPosition(position) : normalizeBasketballPosition(position);
+  const expandedPositions = sport === "football" ? expandFootballPosition(position) : [normalizedPosition];
 
   return athletes
     .map((athlete): PlayerOption => {
@@ -114,7 +116,21 @@ async function fetchEspnRoster(sport: PlayerSport, league: string, clubName: str
         image: athlete.headshot?.href
       };
     })
-    .filter((player) => player.positions.includes(normalizedPosition) || player.position === normalizedPosition);
+    .filter((player) => expandedPositions.includes(player.position) || player.positions.some((item) => expandedPositions.includes(item)));
+}
+
+function buildFallbackPlayers(clubName: string, league: string, sport: PlayerSport, position: string) {
+  const normalizedPosition = sport === "football" ? normalizeFootballPosition(position) : normalizeBasketballPosition(position);
+  const expandedPositions = sport === "football" ? expandFootballPosition(position) : [normalizedPosition];
+  return expandedPositions.map((slot, index) => ({
+    id: `${clubName}-${slot}-${index}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    name: `${clubName} ${slot} ${index + 1}`,
+    sport,
+    club: clubName,
+    league,
+    position: slot,
+    positions: [slot]
+  })) satisfies PlayerOption[];
 }
 
 export async function GET(request: NextRequest) {
@@ -128,9 +144,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ players: [] });
   }
 
-  const remotePlayers = await fetchEspnRoster(sport, club.league, club.name, position);
+  const remotePlayers = await fetchEspnRoster(sport, club.league, club.searchName ?? club.name, position);
   const seen = new Set<string>();
-  const players = remotePlayers.filter((player) => {
+  const dedupedPlayers = remotePlayers.filter((player) => {
     const key = player.name.toLowerCase();
     if (seen.has(key)) {
       return false;
@@ -138,6 +154,7 @@ export async function GET(request: NextRequest) {
     seen.add(key);
     return true;
   });
+  const players = dedupedPlayers.length ? dedupedPlayers : buildFallbackPlayers(club.name, club.league, sport, position);
 
   return NextResponse.json({ players });
 }

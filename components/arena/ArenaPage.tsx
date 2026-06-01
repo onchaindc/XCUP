@@ -549,7 +549,7 @@ function ArenaHero({ stats, vaultBalance, usdcVaultBalance }: { stats: ArenaStat
             Lock collateral, submit a match read, and compete for XP, streaks, and vault-backed rewards on X Layer mainnet.
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+        <div className="grid w-full max-w-[28rem] grid-cols-2 gap-2 text-sm sm:w-auto sm:grid-cols-3 lg:grid-cols-5">
           <Metric icon={Medal} label="XP" value={String(stats.xp)} />
           <Metric icon={Flame} label="Streak" value={String(stats.streak)} />
           <Metric icon={Activity} label="Total" value={String(stats.totalChallenges)} />

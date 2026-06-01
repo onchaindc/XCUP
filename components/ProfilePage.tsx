@@ -168,6 +168,7 @@ function ProfileHero({
   const level = profile.prestigeLevel ?? 1;
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const countryFlag = profile.countryCode ? flagEmoji(profile.countryCode) : "";
+  const countryFlagSrc = profile.countryCode && /^[a-z]{2}$/i.test(profile.countryCode) ? `https://flagcdn.com/w80/${profile.countryCode.toLowerCase()}.png` : "";
   return (
     <section className="overflow-hidden rounded-lg border border-white/10 bg-black">
       <input ref={avatarInputRef} className="hidden" type="file" accept="image/*" onChange={(event) => event.target.files?.[0] ? void uploadProfileImage(event.target.files[0], "avatarUrl") : undefined} />
@@ -215,14 +216,15 @@ function ProfileHero({
           </div>
           <div className="grid grid-cols-3 gap-2">
             <MiniMetric icon={Trophy} label="Rank" value={profile.globalRanking || "Unranked"} />
-            <MiniMetric
-              icon={Flag}
-              label="Country"
-              value={profile.country || "Open"}
-              prefix={countryFlag}
-              asButton
-              onClick={() => setCountryPickerOpen(true)}
-            />
+              <MiniMetric
+                icon={Flag}
+                label="Country"
+                value={profile.country || "Open"}
+                prefix={countryFlag}
+                imageSrc={countryFlagSrc}
+                asButton
+                onClick={() => setCountryPickerOpen(true)}
+              />
             <MiniMetric icon={Crown} label="XP" value={String(xp)} />
           </div>
         </div>
@@ -512,6 +514,7 @@ function MiniMetric({
   label,
   value,
   prefix,
+  imageSrc,
   asButton,
   onClick
 }: {
@@ -519,6 +522,7 @@ function MiniMetric({
   label: string;
   value: string;
   prefix?: string;
+  imageSrc?: string;
   asButton?: boolean;
   onClick?: () => void;
 }) {
@@ -527,7 +531,10 @@ function MiniMetric({
     <>
       <Icon size={15} className="text-[#18e3bd]" aria-hidden="true" />
       <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/38">{label}</p>
-      <p className="mt-1 truncate text-sm font-black text-white">{prefix ? `${prefix} ` : ""}{value}</p>
+      <p className="mt-1 flex items-center gap-2 truncate text-sm font-black text-white">
+        {imageSrc ? <img className="h-5 w-7 rounded-[4px] object-cover" src={imageSrc} alt="" /> : null}
+        <span className="truncate">{prefix ? `${prefix} ` : ""}{value}</span>
+      </p>
     </>
   );
 

@@ -124,7 +124,6 @@ export function GameFiPage() {
     const nextIndex = footballSlots.findIndex((slot) => slot.id === activeSlot.id) + 1;
     if (footballSlots[nextIndex]) {
       setActiveSlot(footballSlots[nextIndex]);
-      setSelectedClubId("");
     }
   }
 
@@ -327,7 +326,7 @@ function FantasyLineup({
                 </span>
               </button>
             ))}
-            {!loadingPlayers && selectedClubId && !players.length ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm leading-6 text-white/58">No player data returned by the source for this position. Try another club/country.</p> : null}
+            {!loadingPlayers && selectedClubId && !players.length ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm leading-6 text-white/58">No live roster was returned, so fallback lineup options should appear here. Try reselecting the club if this stays empty.</p> : null}
             {!selectedClubId ? <p className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm leading-6 text-white/58">Choose a club or country to load real players for {activeSlot.label}.</p> : null}
           </div>
           <div className="grid gap-2 rounded-lg border border-white/10 bg-black/35 p-4">
