@@ -10,6 +10,7 @@ import { formatEventTime, formatLiveEventMatchup, type LiveSportEvent, type Prev
 import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
+import { SiteFooter } from "@/components/SiteFooter";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
 type Slip = {
@@ -254,6 +255,7 @@ export function MarketsPage() {
             </div>
           </aside>
         </section>
+        <SiteFooter />
       </div>
     </main>
   );

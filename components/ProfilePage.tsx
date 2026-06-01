@@ -25,6 +25,7 @@ import { DEFAULT_MATCHDAY_AUDIO, MATCHDAY_AUDIO_TRACKS } from "@/lib/audio-track
 import { clearLocalAuthSession, readLocalAuthSession, type LocalAuthSession } from "@/lib/session";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
+import { SiteFooter } from "@/components/SiteFooter";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
 type ProfileTab = "overview" | "predictions" | "fantasy" | "achievements" | "activity" | "settings";
@@ -140,6 +141,7 @@ export function ProfilePage({ initialTab = "overview" }: { initialTab?: ProfileT
             ) : null}
           </motion.section>
         </AnimatePresence>
+        <SiteFooter />
       </div>
     </main>
   );

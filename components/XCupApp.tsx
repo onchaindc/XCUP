@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Brain,
   Bot,
-  BookOpen,
   CloudSun,
   Gamepad2,
   Globe2,
@@ -34,16 +33,16 @@ import { useNetworkStatus } from "@/lib/use-network-status";
 import { errorMessage, shortAddress } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
 import { AppAudioButton } from "@/components/AppAudioButton";
+import { SiteFooter } from "@/components/SiteFooter";
 import { WorldCupCountdown } from "@/components/WorldCupCountdown";
 
 const topNav = [
-  { label: "Home", href: "https://xcupglobal.vercel.app/", icon: Home, external: true, iconOnly: true },
+  { label: "Home", href: "/", icon: Home, iconOnly: true },
   { label: "Arena", href: "/arena", icon: Trophy },
   { label: "Markets", href: "/markets", icon: Activity },
   { label: "GameFi", href: "/gamefi", icon: Gamepad2 },
   { label: "Squads", href: "/squads", icon: Users },
-  { label: "Agent", href: "/agent", icon: Bot },
-  { label: "Docs", href: "/docs", icon: BookOpen }
+  { label: "Agent", href: "/agent", icon: Bot }
 ];
 
 const agentInsights = [
@@ -186,6 +185,7 @@ export function XCupApp() {
             <AgentPanel featured={featured} />
           </aside>
         </section>
+        <SiteFooter />
       </div>
     </main>
   );
@@ -216,11 +216,11 @@ export function TopHeader({
   return (
     <header className="sticky top-0 z-50 mb-4 border-b border-white/10 bg-[#030409]/90 backdrop-blur-xl md:py-3">
       <div className="flex h-14 items-center justify-between px-4 md:hidden">
-        <Link className="flex min-w-0 items-center gap-3" href="/">
+        <Link className="flex shrink-0 items-center gap-3" href="/">
           <XLayerMark className="h-9 w-9 shrink-0" />
-          <span className="min-w-0">
+          <span className="shrink-0">
             <span className="block truncate text-base font-black text-white">X Cup Arena</span>
-            <span className="block truncate text-[11px] font-bold uppercase tracking-[0.22em] text-white/42">World Cup on X Layer</span>
+            <span className="block whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.22em] text-white/42">World Cup on X Layer</span>
           </span>
         </Link>
         <div className="flex items-center gap-2">
@@ -310,19 +310,15 @@ export function TopHeader({
             <Settings2 size={16} aria-hidden="true" />
             Settings
           </Link>
-          <a className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-[#6b7a93] transition-all hover:bg-[#0d1320] hover:text-white" href="https://x.com/xcuparena" target="_blank" rel="noreferrer">
-            <span className="grid h-4 w-4 place-items-center text-xs font-black">X</span>
-            X
-          </a>
         </div>
       )}
       <div className="hidden md:block">
       <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
-        <Link className="flex min-w-0 items-center gap-3" href="/">
+        <Link className="flex shrink-0 items-center gap-3" href="/">
           <XLayerMark className="h-9 w-9 shrink-0" />
-          <span className="min-w-0">
+          <span className="shrink-0">
             <span className="block truncate text-base font-black text-white">X Cup Arena</span>
-            <span className="block truncate text-[11px] font-bold uppercase tracking-[0.22em] text-white/42">World Cup on X Layer</span>
+            <span className="block whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.22em] text-white/42">World Cup on X Layer</span>
           </span>
         </Link>
         <nav className="hidden items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] p-1 xl:flex">
@@ -375,9 +371,6 @@ export function TopHeader({
           <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="/settings" aria-label="Settings">
             <Settings2 size={16} aria-hidden="true" />
           </Link>
-          <a className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-sm font-black text-white/70 transition hover:bg-white/10 hover:text-white" href="https://x.com/xcuparena" target="_blank" rel="noreferrer" aria-label="X">
-            X
-          </a>
           {isConnected ? (
             <button className="flex max-w-[11.5rem] items-center gap-2 rounded-lg border border-white/12 bg-white/[0.07] px-3 py-2 text-left text-xs font-bold text-white transition hover:bg-white/12" type="button" onClick={onDisconnect}>
               <Wallet size={16} aria-hidden="true" />
@@ -420,14 +413,6 @@ function NavLink({
   children: ReactNode;
   onClick?: () => void;
 }) {
-  if (item.external) {
-    return (
-      <a className={className} href={item.href} target="_blank" rel="noreferrer" onClick={onClick} aria-label={item.iconOnly ? item.label : undefined}>
-        {children}
-      </a>
-    );
-  }
-
   return (
     <Link className={className} href={item.href} onClick={onClick} aria-label={item.iconOnly ? item.label : undefined}>
       {children}

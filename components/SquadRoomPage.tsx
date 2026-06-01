@@ -140,33 +140,68 @@ export function SquadRoomPage({ id }: { id: string }) {
     }
   }
 
-  async function roomAction(payload: Record<string, unknown>) {
+  async function roomAction(payload: Record<string, unknown>, optimisticMessage?: SquadMessage) {
     if (!address) {
       setStatus("Connect wallet to interact inside the squad.");
       return;
     }
 
-    const response = await fetch(`/api/squads/${encodeURIComponent(id)}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...payload, address })
-    });
-    const data = (await response.json()) as { room?: SquadRoom; error?: string };
-    if (!response.ok || !data.room) {
-      setStatus(data.error || "Squad action failed.");
-      return;
+    if (optimisticMessage) {
+      setRoom((current) => {
+        const baseRoom = current ?? localRoomFor(loadLocalSquad(id) ?? fallbackSquad(id), loadLocalMessages(localMessagesKey));
+        const messages = mergeMessages([optimisticMessage], baseRoom.messages);
+        const nextRoom = { ...baseRoom, messages };
+        persistLocalSquad(nextRoom.squad);
+        persistLocalMessages(localMessagesKey, messages);
+        return nextRoom;
+      });
     }
-    setRoom(data.room);
-    persistLocalSquad(data.room.squad);
-    persistLocalMessages(localMessagesKey, data.room.messages);
-    setStatus("");
+
+    try {
+      const response = await fetch(`/api/squads/${encodeURIComponent(id)}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...payload, address })
+      });
+      const data = (await response.json()) as { room?: SquadRoom; error?: string };
+      if (!response.ok || !data.room) {
+        if (optimisticMessage) {
+          setStatus(data.error ? `${data.error} Saved locally.` : "Shared sync missed this room. Saved locally.");
+          return;
+        }
+        setStatus(data.error || "Squad action failed.");
+        return;
+      }
+      setRoom((current) => {
+        const localMessages = loadLocalMessages(localMessagesKey);
+        const messages = mergeMessages(data.room!.messages, current?.messages ?? localMessages);
+        const nextRoom = { ...data.room!, messages };
+        persistLocalSquad(nextRoom.squad);
+        persistLocalMessages(localMessagesKey, messages);
+        return nextRoom;
+      });
+      setStatus("");
+    } catch (error) {
+      if (optimisticMessage) {
+        setStatus("Shared sync is offline. Message saved locally.");
+        return;
+      }
+      setStatus(errorMessage(error, "Squad action failed."));
+    }
   }
 
   async function sendMessage() {
     if (!message.trim() && !attachment) {
       return;
     }
-    await roomAction({ action: "message", body: message, attachment, replyTo: replyTo?.id ?? null });
+    const optimisticMessage = buildLocalMessage({
+      squadId: id,
+      author: address ?? "local",
+      body: message,
+      attachment,
+      replyTo: replyTo?.id ?? null
+    });
+    await roomAction({ action: "message", body: message, attachment, replyTo: replyTo?.id ?? null }, optimisticMessage);
     setMessage("");
     setReplyTo(null);
     setAttachment(null);
@@ -977,6 +1012,46 @@ function localRoomFor(squad: SquadRecord, messages: SquadMessage[]): SquadRoom {
       `${squad.members} members on the saved roster.`
     ],
     ranking: 1000 + squad.members * 20 + messages.length * 5
+  };
+}
+
+function fallbackSquad(id: string): SquadRecord {
+  return {
+    id,
+    name: "Saved squad",
+    motto: "Local squad room restored on this device.",
+    role: "Captain",
+    territory: "Open",
+    accent: "#18e3bd",
+    members: 1,
+    createdAt: new Date().toISOString()
+  };
+}
+
+function buildLocalMessage({
+  squadId,
+  author,
+  body,
+  attachment,
+  replyTo
+}: {
+  squadId: string;
+  author: string;
+  body: string;
+  attachment: SquadMessage["attachment"];
+  replyTo: string | null;
+}): SquadMessage {
+  return {
+    id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    squadId,
+    author,
+    body: body.trim() || (attachment?.type === "gif" ? "Shared a GIF" : "Shared media"),
+    kind: "message",
+    createdAt: new Date().toISOString(),
+    replyTo,
+    pinned: false,
+    reactions: {},
+    attachment: attachment ?? null
   };
 }
 

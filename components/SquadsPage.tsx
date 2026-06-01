@@ -10,6 +10,7 @@ import { X_LAYER_EXPLORER_URL, xLayerTestnet } from "@/lib/arc";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
 import type { SquadRecord, SquadRole } from "@/lib/squads";
+import { SiteFooter } from "@/components/SiteFooter";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 
 type SquadDraft = {
@@ -433,6 +434,7 @@ export function SquadsPage() {
             ) : null}
           </aside>
         </section>
+        <SiteFooter />
       </div>
     </main>
   );
