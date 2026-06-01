@@ -517,7 +517,7 @@ export function ArenaPage() {
               {!loading && !visibleMatches.length ? (
                 <Card className="p-6 text-center md:col-span-2">
                   <p className="font-black text-white">No arena matches found.</p>
-                  <p className="mt-2 text-sm text-muted">Refresh or choose another sport.</p>
+                  <p className="mt-2 text-sm text-muted">No live or upcoming {sport === "All" ? "arena" : sport.toLowerCase()} matches are available right now. Refresh or switch sports.</p>
                 </Card>
               ) : null}
             </section>

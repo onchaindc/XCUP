@@ -38,6 +38,9 @@ type EspnTeams = {
 
 type EspnRoster = {
   athletes?: EspnAthlete[];
+  team?: {
+    athletes?: EspnAthlete[];
+  };
 };
 
 const espnLeagueSlug: Record<string, string> = {
@@ -97,7 +100,7 @@ async function fetchEspnRoster(sport: PlayerSport, league: string, clubName: str
   }
 
   const data = await fetchJson<EspnRoster>(`https://site.api.espn.com/apis/site/v2/sports/${slug}/teams/${teamId}/roster`);
-  const athletes = data?.athletes ?? [];
+  const athletes = data?.athletes ?? data?.team?.athletes ?? [];
   const normalizedPosition = sport === "football" ? normalizeFootballPosition(position) : normalizeBasketballPosition(position);
   const expandedPositions = sport === "football" ? expandFootballPosition(position) : [normalizedPosition];
 
@@ -120,16 +123,33 @@ async function fetchEspnRoster(sport: PlayerSport, league: string, clubName: str
 }
 
 function buildFallbackPlayers(clubName: string, league: string, sport: PlayerSport, position: string) {
+  const knownFallbacks: Record<string, Record<string, string[]>> = {
+    bournemouth: {
+      GK: ["Kepa Arrizabalaga"],
+      LB: ["Milos Kerkez"],
+      CB: ["Illia Zabarnyi", "Marcos Senesi", "Dean Huijsen"],
+      RB: ["Adam Smith", "Julian Araujo"],
+      CM: ["Lewis Cook", "Ryan Christie", "Alex Scott", "Tyler Adams"],
+      AM: ["Justin Kluivert", "Marcus Tavernier"],
+      LW: ["Luis Sinisterra", "Dango Ouattara"],
+      RW: ["Antoine Semenyo", "Marcus Tavernier"],
+      ST: ["Evanilson", "Enes Unal", "Daniel Jebbison"]
+    }
+  };
+
   const normalizedPosition = sport === "football" ? normalizeFootballPosition(position) : normalizeBasketballPosition(position);
   const expandedPositions = sport === "football" ? expandFootballPosition(position) : [normalizedPosition];
-  return expandedPositions.map((slot, index) => ({
-    id: `${clubName}-${slot}-${index}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-    name: `${clubName} ${slot} ${index + 1}`,
+  const clubFallback = knownFallbacks[clubName.toLowerCase()];
+  const names = expandedPositions.flatMap((slot) => clubFallback?.[slot] ?? []);
+
+  return names.map((name, index) => ({
+    id: `${clubName}-${name}-${index}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    name,
     sport,
     club: clubName,
     league,
-    position: slot,
-    positions: [slot]
+    position: expandedPositions[Math.min(index, expandedPositions.length - 1)] ?? normalizedPosition,
+    positions: expandedPositions
   })) satisfies PlayerOption[];
 }
 
