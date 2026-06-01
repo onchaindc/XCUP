@@ -829,72 +829,118 @@ function StockMarketModule() {
 
 function ShootoutModule() {
   const directions = ["Left", "Center", "Right"] as const;
+  const heights = ["Low", "Mid", "High"] as const;
   const modes = ["Solo Practice", "1v1 Match", "Squad vs Squad", "Ranked Mode"] as const;
+  const shooters = [
+    { name: "Cristiano Ronaldo", composure: 97, power: 95, placement: 89, style: "Power finisher" },
+    { name: "Lionel Messi", composure: 99, power: 84, placement: 98, style: "Disguised placement" },
+    { name: "Kylian Mbappe", composure: 92, power: 96, placement: 88, style: "Fast whip" },
+    { name: "Harry Kane", composure: 94, power: 91, placement: 92, style: "Corner sniper" },
+    { name: "Neymar Jr", composure: 90, power: 83, placement: 93, style: "Delay and deceive" },
+    { name: "Victor Osimhen", composure: 87, power: 95, placement: 82, style: "Violent strike" }
+  ] as const;
+  const keepers = [
+    { name: "Emiliano Martinez", reflex: 94, reach: 92, mindGames: 95, style: "Reads stutter steps" },
+    { name: "Alisson Becker", reflex: 91, reach: 91, mindGames: 88, style: "Balanced sweeper" },
+    { name: "Thibaut Courtois", reflex: 92, reach: 98, mindGames: 86, style: "Massive wingspan" },
+    { name: "Mike Maignan", reflex: 93, reach: 90, mindGames: 89, style: "Late explosive dive" }
+  ] as const;
+
+  type Direction = (typeof directions)[number];
+  type Height = (typeof heights)[number];
+
   const [mode, setMode] = useState<(typeof modes)[number]>("Solo Practice");
-  const [phase, setPhase] = useState<"pre" | "power" | "timing" | "result">("pre");
-  const [target, setTarget] = useState<(typeof directions)[number]>("Center");
-  const [power, setPower] = useState(52);
-  const [timing, setTiming] = useState(50);
   const [round, setRound] = useState(1);
   const [score, setScore] = useState({ player: 0, opponent: 0 });
+  const [shooterIndex, setShooterIndex] = useState(0);
+  const [keeperIndex, setKeeperIndex] = useState(0);
+  const [direction, setDirection] = useState<Direction>("Right");
+  const [height, setHeight] = useState<Height>("Low");
+  const [power, setPower] = useState(78);
+  const [placement, setPlacement] = useState(74);
+  const [curve, setCurve] = useState(20);
+  const [isShooting, setIsShooting] = useState(false);
+  const [shotToken, setShotToken] = useState(0);
+  const [result, setResult] = useState("Pick your taker, choose the spot, then fire.");
   const [history, setHistory] = useState<string[]>([]);
-  const [countdown, setCountdown] = useState(3);
-  const [result, setResult] = useState("Choose mode and start the duel.");
-  const [movingPower, setMovingPower] = useState(true);
-  const [movingTiming, setMovingTiming] = useState(true);
+  const [lastOutcome, setLastOutcome] = useState<{
+    goal: boolean;
+    dive: Direction;
+    targetX: number;
+    targetY: number;
+    savedX: number;
+    savedY: number;
+    note: string;
+  } | null>(null);
 
-  useEffect(() => {
-    if (phase !== "power") return;
-    const interval = window.setInterval(() => setPower((value) => (value >= 96 ? 18 : value + 7)), 80);
-    return () => window.clearInterval(interval);
-  }, [phase]);
+  const shooter = shooters[shooterIndex];
+  const keeper = keepers[keeperIndex];
 
-  useEffect(() => {
-    if (phase !== "timing") return;
-    const interval = window.setInterval(() => setTiming((value) => (value >= 96 ? 4 : value + 9)), 70);
-    return () => window.clearInterval(interval);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "pre") return;
-    setCountdown(3);
-    const interval = window.setInterval(() => setCountdown((value) => Math.max(0, value - 1)), 650);
-    const timeout = window.setTimeout(() => {
-      setPhase("power");
-      setResult("Lock power.");
-      setMovingPower(true);
-      setMovingTiming(true);
-    }, 2050);
-    return () => {
-      window.clearInterval(interval);
-      window.clearTimeout(timeout);
-    };
-  }, [phase, round]);
-
-  function lockPower() {
-    setMovingPower(false);
-    setPhase("timing");
-    setResult("Lock timing.");
+  function laneX(target: Direction) {
+    return target === "Left" ? 23 : target === "Center" ? 50 : 77;
   }
 
-  function lockTiming() {
-    setMovingTiming(false);
-    const keeper = directions[Math.floor(Math.random() * directions.length)];
-    const accuracy = 100 - Math.abs(timing - 50) * 2;
-    const overhit = power > 84 && accuracy < 52;
-    const saved = keeper === target && accuracy < 86;
-    const goal = !overhit && !saved;
-    const note = overhit ? "Missed high from bad timing." : saved ? `Saved. Keeper went ${keeper}.` : `Goal. Keeper went ${keeper}.`;
-    setScore((current) => ({ ...current, player: current.player + (goal ? 1 : 0) }));
-    setHistory((current) => [`R${round}: ${target} / ${power} power / ${accuracy}% timing - ${goal ? "Goal" : "No goal"}`, ...current].slice(0, 8));
-    setResult(note);
-    setPhase("result");
+  function laneY(level: Height) {
+    return level === "High" ? 18 : level === "Mid" ? 34 : 52;
+  }
+
+  function takeShot() {
+    if (isShooting) return;
+
+    const shooterPower = (power + shooter.power) / 2;
+    const shooterPlacement = (placement + shooter.placement) / 2;
+    const composureBoost = shooter.composure / 100;
+    const keeperRead = (keeper.reflex + keeper.mindGames) / 2;
+    const targetX = laneX(direction) + (Math.random() * 8 - 4) + curve * 0.08 * (direction === "Center" ? 0 : direction === "Left" ? -1 : 1);
+    const targetY = laneY(height) + (Math.random() * 6 - 3) - composureBoost * 2;
+    const dive = directions[Math.floor(Math.random() * directions.length)];
+    const diveMatch = dive === direction;
+    const heightCoverage = height === "Mid" ? 1 : height === "Low" ? 0.92 : 0.84;
+    const saveWindow = Math.max(10, 34 - ((shooterPlacement - keeperRead) / 7)) * heightCoverage;
+    const accuracyGap = Math.abs(targetX - laneX(direction)) + Math.abs(targetY - laneY(height));
+    const ballooned = shooterPower > 92 && placement < 55 && Math.random() > 0.62;
+    const draggedWide = shooterPlacement < 52 && Math.random() > 0.7;
+    const keeperSave = diveMatch && accuracyGap < saveWindow && Math.random() < Math.min(0.82, keeperRead / 120);
+    const goal = !ballooned && !draggedWide && !keeperSave;
+    const savedX = dive === "Left" ? 28 : dive === "Center" ? 50 : 72;
+    const savedY = height === "High" ? 24 : height === "Mid" ? 34 : 45;
+    const note = ballooned
+      ? `${shooter.name} blasted it over under pressure.`
+      : draggedWide
+        ? `${shooter.name} dragged the penalty wide.`
+        : keeperSave
+          ? `${keeper.name} guessed ${dive.toLowerCase()} and got a big hand to it.`
+          : `${shooter.name} beat ${keeper.name} with a ${height.toLowerCase()} hit to the ${direction.toLowerCase()}.`;
+
+    setIsShooting(true);
+    setShotToken((current) => current + 1);
+    setResult("Shot in motion...");
+
+    window.setTimeout(() => {
+      setScore((current) => ({
+        player: current.player + (goal ? 1 : 0),
+        opponent: current.opponent + (Math.random() > (mode === "Ranked Mode" ? 0.42 : 0.48) ? 1 : 0)
+      }));
+      setHistory((current) => [
+        `R${round}: ${shooter.name} to ${direction.toLowerCase()} ${height.toLowerCase()} | ${goal ? "GOAL" : keeperSave ? "SAVED" : "MISSED"}`
+        , ...current
+      ].slice(0, 8));
+      setLastOutcome({ goal, dive, targetX, targetY, savedX, savedY, note });
+      setResult(note);
+      setIsShooting(false);
+    }, 1400);
   }
 
   function nextRound() {
+    if (isShooting) return;
     setRound((current) => current + 1);
-    setScore((current) => ({ ...current, opponent: current.opponent + (Math.random() > 0.52 ? 1 : 0) }));
-    setPhase("pre");
+    setDirection(directions[(round + 1) % directions.length]);
+    setHeight(heights[round % heights.length]);
+    setPower(74 + ((round * 3) % 18));
+    setPlacement(68 + ((round * 5) % 20));
+    setCurve((round * 9) % 45);
+    setLastOutcome(null);
+    setResult("Set the next penalty and shoot again.");
   }
 
   return (
@@ -905,30 +951,103 @@ function ShootoutModule() {
             <button key={item} className={`rounded-lg border px-3 py-2 text-xs font-black transition ${mode === item ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.05] text-white/62 hover:bg-white/10 hover:text-white"}`} type="button" onClick={() => setMode(item)}>{item}</button>
           ))}
         </div>
-        <div className="relative min-h-[24rem] overflow-hidden rounded-lg border border-white/10 bg-[radial-gradient(circle_at_50%_82%,rgba(24,227,189,0.22),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] p-4">
-          <div className="absolute left-[12%] right-[12%] top-8 h-32 border-4 border-white/35 border-b-0" />
-          <motion.div className="absolute bottom-16 h-5 w-5 rounded-full bg-white shadow-[0_0_22px_rgba(255,255,255,0.8)]" animate={{ left: target === "Left" ? "24%" : target === "Right" ? "72%" : "48%", y: phase === "result" ? -155 : 0 }} transition={{ type: "spring", stiffness: 90, damping: 14 }} />
-          <motion.div className="absolute top-28 h-12 w-16 rounded-t-full border border-[#18e3bd]/35 bg-[#18e3bd]/25" animate={{ left: phase === "result" ? target === "Left" ? "18%" : target === "Right" ? "70%" : "46%" : "46%", rotate: phase === "result" ? target === "Left" ? -24 : target === "Right" ? 24 : 0 : 0 }} />
-          <div className="absolute inset-x-4 bottom-4 grid grid-cols-3 gap-2">
-            {directions.map((item) => (
-              <button key={item} className={`rounded-lg border px-3 py-5 text-sm font-black ${target === item ? "border-[#18e3bd] bg-[#18e3bd]/20" : "border-white/10 bg-black/35"}`} type="button" onClick={() => setTarget(item)}>{item}</button>
-            ))}
+        <div className="grid gap-4 rounded-lg border border-white/10 bg-black/30 p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <div className="grid gap-3">
+              <div className="grid gap-2 md:grid-cols-2">
+                <label className="grid gap-2 text-sm font-bold text-white/58">
+                  Penalty taker
+                  <select className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-sm font-black text-white outline-none focus:border-[#18e3bd]/60" value={shooterIndex} onChange={(event) => setShooterIndex(Number(event.target.value))}>
+                    {shooters.map((item, index) => <option key={item.name} value={index}>{item.name}</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-white/58">
+                  Goalkeeper
+                  <select className="rounded-lg border border-white/10 bg-black/35 px-3 py-3 text-sm font-black text-white outline-none focus:border-[#18e3bd]/60" value={keeperIndex} onChange={(event) => setKeeperIndex(Number(event.target.value))}>
+                    {keepers.map((item, index) => <option key={item.name} value={index}>{item.name}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3 md:grid-cols-2">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#18e3bd]">Taker profile</p>
+                  <p className="mt-2 text-lg font-black text-white">{shooter.name}</p>
+                  <p className="mt-1 text-sm text-white/56">{shooter.style}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#18e3bd]">Keeper profile</p>
+                  <p className="mt-2 text-lg font-black text-white">{keeper.name}</p>
+                  <p className="mt-1 text-sm text-white/56">{keeper.style}</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#18e3bd]">Shot card</p>
+              <div className="mt-3 grid gap-2 text-sm font-bold text-white/62">
+                <p>Direction: <span className="text-white">{direction}</span></p>
+                <p>Height: <span className="text-white">{height}</span></p>
+                <p>Power: <span className="text-white">{power}</span></p>
+                <p>Placement: <span className="text-white">{placement}</span></p>
+                <p>Curve: <span className="text-white">{curve}</span></p>
+              </div>
+            </div>
           </div>
-          {phase === "pre" ? <div className="absolute inset-0 grid place-items-center bg-black/25 text-7xl font-black text-white">{countdown || "GO"}</div> : null}
-        </div>
-        <div className="grid gap-3 rounded-lg border border-white/10 bg-black/35 p-4">
-          <Meter label="Power" value={power} active={phase === "power" && movingPower} />
-          <Meter label="Timing" value={timing} active={phase === "timing" && movingTiming} />
+          <div className="relative min-h-[26rem] overflow-hidden rounded-lg border border-white/10 bg-[radial-gradient(circle_at_50%_82%,rgba(24,227,189,0.22),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))] p-4">
+            <div className="absolute inset-x-[12%] top-8 h-40 border-[5px] border-white/35 border-b-0" />
+            <div className="absolute inset-x-[18%] top-[3.2rem] h-[8.7rem] border-x border-white/10" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.18)),radial-gradient(circle_at_50%_100%,rgba(24,227,189,0.18),transparent_55%)]" />
+            <motion.div
+              key={`keeper-${shotToken}`}
+              className="absolute top-[8.8rem] h-16 w-16 rounded-t-[2rem] border border-[#18e3bd]/45 bg-[#18e3bd]/22 shadow-[0_0_30px_rgba(24,227,189,0.2)]"
+              animate={{
+                left: isShooting && lastOutcome ? `${lastOutcome.savedX - 8}%` : "46%",
+                top: isShooting && lastOutcome ? `${lastOutcome.savedY}%` : "8.8rem",
+                rotate: isShooting && lastOutcome ? (lastOutcome.dive === "Left" ? -22 : lastOutcome.dive === "Right" ? 22 : 0) : 0
+              }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+            <motion.div
+              key={`ball-${shotToken}`}
+              className="absolute bottom-14 left-1/2 h-5 w-5 -translate-x-1/2 rounded-full bg-white shadow-[0_0_22px_rgba(255,255,255,0.82)]"
+              animate={{
+                left: isShooting ? `${lastOutcome?.targetX ?? laneX(direction)}%` : "50%",
+                bottom: isShooting ? `${100 - (lastOutcome?.targetY ?? laneY(height))}%` : "3.5rem",
+                scale: isShooting ? 0.72 : 1
+              }}
+              transition={{ duration: 0.72, ease: "easeInOut" }}
+            />
+            {lastOutcome && !isShooting ? (
+              <div className={`absolute right-4 top-4 rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-[0.14em] ${lastOutcome.goal ? "border-[#18e3bd]/30 bg-[#18e3bd]/12 text-[#80ffe2]" : "border-[#ff5c39]/30 bg-[#ff5c39]/12 text-[#ffb09d]"}`}>
+                {lastOutcome.goal ? "Goal" : "No goal"}
+              </div>
+            ) : null}
+            <div className="absolute inset-x-4 bottom-4 grid gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-3 gap-2">
+                {directions.map((item) => (
+                  <button key={item} className={`rounded-lg border px-3 py-4 text-sm font-black transition ${direction === item ? "border-[#18e3bd] bg-[#18e3bd]/20 text-white" : "border-white/10 bg-black/35 text-white/64 hover:bg-white/[0.08]"}`} type="button" onClick={() => setDirection(item)}>{item}</button>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {heights.map((item) => (
+                  <button key={item} className={`rounded-lg border px-3 py-4 text-sm font-black transition ${height === item ? "border-[#18e3bd] bg-[#18e3bd]/20 text-white" : "border-white/10 bg-black/35 text-white/64 hover:bg-white/[0.08]"}`} type="button" onClick={() => setHeight(item)}>{item}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3 rounded-lg border border-white/10 bg-black/35 p-4">
+            <Meter label="Power" value={power} active />
+            <input className="accent-[#18e3bd]" type="range" min="45" max="100" step="1" value={power} onChange={(event) => setPower(Number(event.target.value))} />
+            <Meter label="Placement" value={placement} active />
+            <input className="accent-[#18e3bd]" type="range" min="40" max="100" step="1" value={placement} onChange={(event) => setPlacement(Number(event.target.value))} />
+            <Meter label="Curve" value={curve} active />
+            <input className="accent-[#18e3bd]" type="range" min="0" max="60" step="1" value={curve} onChange={(event) => setCurve(Number(event.target.value))} />
+          </div>
           <div className="flex flex-wrap gap-2">
-            <button className="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={phase !== "power"} onClick={lockPower}>
-              <Zap size={16} aria-hidden="true" />
-              Lock power
-            </button>
-            <button className="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={phase !== "timing"} onClick={lockTiming}>
+            <button className="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-[#18e3bd] disabled:opacity-50" type="button" disabled={isShooting} onClick={takeShot}>
               <Play size={16} aria-hidden="true" />
-              Shoot
+              {isShooting ? "Shot in flight..." : "Take penalty"}
             </button>
-            <button className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-black text-white transition hover:bg-white/12 disabled:opacity-50" type="button" disabled={phase !== "result"} onClick={nextRound}>
+            <button className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-3 text-sm font-black text-white transition hover:bg-white/12 disabled:opacity-50" type="button" disabled={isShooting} onClick={nextRound}>
               Next round
             </button>
           </div>
@@ -940,6 +1059,14 @@ function ShootoutModule() {
           <p className="mt-3 text-3xl font-black">{score.player} - {score.opponent}</p>
           <p className="mt-2 text-sm leading-6 text-white/60">Round {round} of 5. Ties continue into sudden death.</p>
           <p className="mt-3 rounded-lg border border-white/10 bg-white/[0.045] p-3 text-sm font-bold text-white/70">{result}</p>
+        </div>
+        <div className="rounded-lg border border-white/10 bg-black/35 p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Live matchup</p>
+          <div className="mt-3 grid gap-2 text-sm font-bold text-white/64">
+            <p>{shooter.name}</p>
+            <p className="text-white/34">vs</p>
+            <p>{keeper.name}</p>
+          </div>
         </div>
         <div className="rounded-lg border border-white/10 bg-black/35 p-4">
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#18e3bd]">Shot history</p>

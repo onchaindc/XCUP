@@ -575,9 +575,21 @@ function SectionTitle({ icon: Icon, title }: { icon: typeof UserRound; title: st
 
 function ToggleRow({ label, enabled, toggle }: { label: string; enabled: boolean; toggle: () => void }) {
   return (
-    <button className={`flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-black ${enabled ? "border-[#18e3bd]/30 bg-[#18e3bd]/10 text-white" : "border-white/10 bg-black/35 text-white/52"}`} type="button" onClick={toggle}>
+    <button
+      className={`flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-black transition ${enabled ? "border-[#18e3bd]/45 bg-[#18e3bd]/12 text-white shadow-[0_0_0_1px_rgba(24,227,189,0.08)]" : "border-white/10 bg-black/35 text-white/70 hover:border-white/20 hover:bg-white/[0.06]"}`}
+      type="button"
+      onClick={toggle}
+      aria-pressed={enabled}
+    >
       <span>{label}</span>
-      <span>{enabled ? "On" : "Off"}</span>
+      <span className={`relative inline-flex h-7 w-14 items-center rounded-full border transition ${enabled ? "border-[#18e3bd] bg-[#18e3bd]/25" : "border-white/12 bg-white/[0.08]"}`}>
+        <motion.span
+          className={`absolute h-5 w-5 rounded-full ${enabled ? "bg-[#18e3bd]" : "bg-white/80"}`}
+          animate={{ x: enabled ? 30 : 4 }}
+          transition={{ type: "spring", stiffness: 380, damping: 28 }}
+        />
+        <span className="sr-only">{enabled ? "On" : "Off"}</span>
+      </span>
     </button>
   );
 }
