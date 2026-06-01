@@ -306,7 +306,7 @@ export function TopHeader({
             <UserRound size={16} aria-hidden="true" />
             Profile
           </Link>
-          <Link className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-[#6b7a93] transition-all hover:bg-[#0d1320] hover:text-white" href="/profile?tab=settings" onClick={() => setIsMenuOpen(false)}>
+          <Link className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-[#6b7a93] transition-all hover:bg-[#0d1320] hover:text-white" href="/settings" onClick={() => setIsMenuOpen(false)}>
             <Settings2 size={16} aria-hidden="true" />
             Settings
           </Link>
@@ -372,7 +372,7 @@ export function TopHeader({
           <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="/profile" aria-label="Profile">
             <UserRound size={16} aria-hidden="true" />
           </Link>
-          <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="/profile?tab=settings" aria-label="Settings">
+          <Link className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" href="/settings" aria-label="Settings">
             <Settings2 size={16} aria-hidden="true" />
           </Link>
           <a className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-sm font-black text-white/70 transition hover:bg-white/10 hover:text-white" href="https://x.com/xcuparena" target="_blank" rel="noreferrer" aria-label="X">

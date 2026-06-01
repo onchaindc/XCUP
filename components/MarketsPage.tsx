@@ -357,8 +357,10 @@ function PreviousMatchCard({ match }: { match: PreviousFootballMatch }) {
         <div className="mt-4 grid gap-2">
           {match.goals.slice(0, 6).map((goal) => (
             <div key={goal.id} className="rounded-lg border border-white/10 bg-black/35 p-3">
-              <p className="font-black text-white">{goal.athlete ?? goal.team ?? "Scoring play"} {goal.minute ? `- ${goal.minute}` : ""}</p>
-              <p className="mt-1 text-sm text-white/58">{goal.text}</p>
+              <p className="font-black text-white">{goal.athlete ?? "Scoring play"} {goal.team ? `- ${goal.team}` : ""} {goal.minute ? `- ${goal.minute}` : ""}</p>
+              <p className="mt-1 text-sm text-white/58">{goal.penalty ? "Penalty goal" : "Open-play goal"}{goal.score ? ` (${goal.score})` : ""}</p>
+              <p className="mt-1 text-sm text-white/58">Assist: {goal.assist ?? "No assist recorded"}</p>
+              <p className="mt-1 text-xs text-white/42">{goal.text}</p>
             </div>
           ))}
         </div>

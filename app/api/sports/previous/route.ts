@@ -52,10 +52,12 @@ type EspnEvent = {
       clock?: { displayValue?: string };
       team?: { displayName?: string; abbreviation?: string };
       athletesInvolved?: Array<{ displayName?: string; fullName?: string }>;
+      participants?: Array<{ athlete?: { displayName?: string; fullName?: string }; displayName?: string; fullName?: string }>;
       scoringPlay?: boolean;
       scoreValue?: number;
       homeScore?: number;
       awayScore?: number;
+      type?: { text?: string };
       text?: string;
     }>;
   }>;
@@ -73,9 +75,11 @@ type EspnSummary = {
     clock?: { displayValue?: string };
     team?: { displayName?: string; abbreviation?: string };
     athletesInvolved?: Array<{ displayName?: string; fullName?: string }>;
+    participants?: Array<{ athlete?: { displayName?: string; fullName?: string }; displayName?: string; fullName?: string }>;
     text?: string;
     homeScore?: number;
     awayScore?: number;
+    type?: { text?: string };
   }>;
 };
 
@@ -124,16 +128,35 @@ function normalizeStats(home?: EspnCompetitor, away?: EspnCompetitor, summary?: 
     .filter((stat) => stat.label && (stat.home !== "-" || stat.away !== "-"));
 }
 
+function participantName(participant?: { athlete?: { displayName?: string; fullName?: string }; displayName?: string; fullName?: string }) {
+  return participant?.athlete?.displayName ?? participant?.athlete?.fullName ?? participant?.displayName ?? participant?.fullName;
+}
+
+function playerName(player?: { displayName?: string; fullName?: string }) {
+  return player?.displayName ?? player?.fullName;
+}
+
+function assistFromText(text?: string) {
+  const match = text?.match(/\bassist(?:ed)?\s+by\s+([^.;,)]+)/i);
+  return match?.[1]?.trim();
+}
+
 function normalizeGoals(event?: EspnEvent, summary?: EspnSummary) {
   const plays = summary?.scoringPlays ?? event?.competitions?.[0]?.details?.filter((detail) => detail.scoringPlay || detail.scoreValue) ?? [];
-  return plays.map((play, index) => ({
-    id: play.id ?? `${index}`,
-    team: play.team?.displayName ?? play.team?.abbreviation,
-    athlete: play.athletesInvolved?.[0]?.displayName ?? play.athletesInvolved?.[0]?.fullName,
-    minute: play.clock?.displayValue,
-    text: play.text ?? "Scoring play",
-    score: typeof play.homeScore === "number" && typeof play.awayScore === "number" ? `${play.awayScore}-${play.homeScore}` : undefined
-  }));
+  return plays.map((play, index) => {
+    const scorer = playerName(play.athletesInvolved?.[0]) ?? participantName(play.participants?.[0]);
+    const assist = playerName(play.athletesInvolved?.[1]) ?? participantName(play.participants?.[1]) ?? assistFromText(play.text);
+    return {
+      id: play.id ?? `${index}`,
+      team: play.team?.displayName ?? play.team?.abbreviation,
+      athlete: scorer,
+      assist: assist && assist !== scorer ? assist : undefined,
+      minute: play.clock?.displayValue,
+      text: play.text ?? "Scoring play",
+      score: typeof play.homeScore === "number" && typeof play.awayScore === "number" ? `${play.awayScore}-${play.homeScore}` : undefined,
+      penalty: /penalty|spot kick/i.test(`${play.type?.text ?? ""} ${play.text ?? ""}`)
+    };
+  });
 }
 
 export async function GET() {

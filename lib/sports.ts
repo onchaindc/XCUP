@@ -74,6 +74,7 @@ export type LiveMatchScoringPlay = {
   id: string;
   team?: string;
   athlete?: string;
+  assist?: string;
   minute?: string;
   text: string;
   score?: string;

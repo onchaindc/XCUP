@@ -85,7 +85,7 @@ export default function DocsPage() {
                 Open Squads
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
-              <Link className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-black text-white transition hover:bg-white/12" href="/profile?tab=settings">
+              <Link className="flex items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-black text-white transition hover:bg-white/12" href="/settings">
                 Settings
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>

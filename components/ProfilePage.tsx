@@ -267,7 +267,7 @@ function ActivityTab({ preferences, activities }: { preferences: Preferences; ac
   );
 }
 
-function SettingsTab({
+export function SettingsTab({
   profile,
   preferences,
   updateProfile,

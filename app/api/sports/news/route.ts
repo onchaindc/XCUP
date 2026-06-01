@@ -43,6 +43,46 @@ const footballTerms = [
   "soccer"
 ];
 
+const priorityStories: SportsNewsItem[] = [
+  {
+    id: "priority-2026-ucl-psg-arsenal",
+    title: "PSG win the 2026 UEFA Champions League title against Arsenal",
+    description: "Paris Saint-Germain's Champions League win over Arsenal is treated as a major football storyline, so related UCL updates stay near the top of the XCUP feed.",
+    summary: "Major UCL title story prioritized for the arena headline feed.",
+    link: "https://www.uefa.com/uefachampionsleague/",
+    source: "XCUP priority desk",
+    category: "uefa.champions",
+    published: "2026-05-30T22:00:00.000Z"
+  }
+];
+
+const majorStoryTerms = [
+  "champions league",
+  "ucl",
+  "psg",
+  "paris saint-germain",
+  "arsenal",
+  "final",
+  "title",
+  "trophy",
+  "winner",
+  "won",
+  "player ratings",
+  "postmatch",
+  "reaction"
+];
+
+function storyScore(item: SportsNewsItem) {
+  const text = `${item.title} ${item.description} ${item.category ?? ""}`.toLowerCase();
+  const publishedAt = new Date(item.published ?? 0).getTime();
+  const ageHours = publishedAt ? Math.max(0, (Date.now() - publishedAt) / 3_600_000) : 96;
+  const recency = Math.max(0, 80 - ageHours);
+  const major = majorStoryTerms.reduce((score, term) => score + (text.includes(term) ? 16 : 0), 0);
+  const football = footballTerms.some((term) => text.includes(term)) ? 18 : 0;
+  const worldCup = text.includes("world cup") || text.includes("fifa") ? 24 : 0;
+  return recency + major + football + worldCup;
+}
+
 async function fetchNewsPayload(url: string) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), NEWS_TIMEOUT_MS);
@@ -88,21 +128,16 @@ async function fetchNews(url: string) {
 export async function GET() {
   const settled = await Promise.allSettled(newsFeeds.map(fetchNews));
   const seen = new Set<string>();
-  const items = settled
+  const items = [...priorityStories, ...settled
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .sort((a, b) => {
-      const aText = `${a.title} ${a.description}`.toLowerCase();
-      const bText = `${b.title} ${b.description}`.toLowerCase();
-      const aWorldCup = aText.includes("world cup") || aText.includes("fifa");
-      const bWorldCup = bText.includes("world cup") || bText.includes("fifa");
-      if (aWorldCup !== bWorldCup) {
-        return aWorldCup ? -1 : 1;
-      }
-      const aFootball = footballTerms.some((term) => aText.includes(term));
-      const bFootball = footballTerms.some((term) => bText.includes(term));
-      if (aFootball !== bFootball) {
-        return aFootball ? -1 : 1;
-      }
+      const scoreDelta = storyScore(b) - storyScore(a);
+      if (scoreDelta) return scoreDelta;
+      return new Date(b.published ?? 0).getTime() - new Date(a.published ?? 0).getTime();
+    })]
+    .sort((a, b) => {
+      const scoreDelta = storyScore(b) - storyScore(a);
+      if (scoreDelta) return scoreDelta;
       return new Date(b.published ?? 0).getTime() - new Date(a.published ?? 0).getTime();
     })
     .filter((item) => {

@@ -115,6 +115,7 @@ export function LiveMatchPage({ id }: { id: string }) {
                         <p className="mt-1 text-sm leading-6 text-white/58">
                           {goal.penalty ? "Penalty goal" : "Open-play goal"}{goal.score ? ` (${goal.score})` : ""}
                         </p>
+                        <p className="mt-1 text-sm leading-6 text-white/58">Assist: {goal.assist ?? "No assist recorded"}</p>
                         <p className="mt-1 text-xs leading-5 text-white/42">{goal.text}</p>
                       </div>
                     ))}
