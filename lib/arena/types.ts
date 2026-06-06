@@ -23,6 +23,9 @@ export type ArenaSlip = {
   matchId: string;
   matchName: string;
   sport: ArenaSport;
+  league?: string;
+  matchStartTime?: string;
+  matchStatus?: ArenaMatch["status"];
   predictedOutcome: ArenaOutcome;
   confidence: ArenaConfidence;
   reasoning: string;

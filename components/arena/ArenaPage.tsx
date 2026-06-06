@@ -12,6 +12,7 @@ import { X_LAYER_EXPLORER_URL, xLayerMainnet } from "@/lib/arc";
 import type { SportsNewsItem } from "@/lib/sports";
 import { errorMessage } from "@/lib/utils";
 import { pickWalletConnector } from "@/lib/wallet";
+import { WalletGate } from "@/components/WalletGate";
 import { KickoffLoader, TopHeader } from "@/components/XCupApp";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -192,6 +193,9 @@ export function ArenaPage() {
           matchId: matchedArena?.id ?? existing?.matchId ?? slip.matchId,
           matchName: matchedArena ? matchName(matchedArena) : existing?.matchName ?? `Match ${slip.matchId.slice(0, 10)}...`,
           sport: matchedArena?.sport ?? existing?.sport ?? "Football",
+          league: matchedArena?.league ?? existing?.league,
+          matchStartTime: matchedArena?.startTime ?? existing?.matchStartTime,
+          matchStatus: matchedArena?.status ?? existing?.matchStatus,
           predictedOutcome: chainOutcomeMap[Number(slip.outcome)] ?? "HOME",
           confidence: existing?.confidence ?? "Medium",
           reasoning: existing?.reasoning ?? "",
@@ -304,6 +308,9 @@ export function ArenaPage() {
       matchId: input.match.id,
       matchName: matchName(input.match),
       sport: input.match.sport,
+      league: input.match.league,
+      matchStartTime: input.match.startTime,
+      matchStatus: input.match.status,
       predictedOutcome: input.outcome,
       confidence: input.confidence,
       reasoning: input.reasoning,
@@ -495,41 +502,52 @@ export function ArenaPage() {
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[92rem] flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-8">
         <TopHeader address={address} isConnected={isConnected} isPending={isPending} balance={formattedBalance} onConnect={() => void connectWallet()} onDisconnect={() => disconnect()} />
         {toast ? <Toast message={toast} onClose={() => setToast("")} /> : null}
-        <ArenaHero stats={stats} vaultBalance={vaultBalance} usdcVaultBalance={usdcVaultBalance} />
-        <section className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="grid gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3">
-              <div className="flex flex-wrap gap-2">
-                {sportFilters.map((item) => (
-                  <button key={item} className={`rounded-lg border px-3 py-2 text-xs font-black transition ${sport === item ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.05] text-white/62 hover:bg-white/10 hover:text-white"}`} type="button" onClick={() => setSport(item)}>
-                    {item}
-                  </button>
-                ))}
+        {!isConnected ? (
+          <WalletGate
+            title="Connect to enter predictions"
+            description="Profiles, prediction slips, GameFi, squads, agent actions, and vault controls are wallet-gated so every activity maps to a real user wallet."
+            busy={isPending}
+            onConnect={() => void connectWallet()}
+          />
+        ) : (
+          <>
+            <ArenaHero stats={stats} vaultBalance={vaultBalance} usdcVaultBalance={usdcVaultBalance} />
+            <section className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+              <div className="grid content-start gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.045] p-3">
+                  <div className="flex flex-wrap gap-2">
+                    {sportFilters.map((item) => (
+                      <button key={item} className={`rounded-lg border px-3 py-2 text-xs font-black transition ${sport === item ? "border-white bg-white text-black" : "border-white/10 bg-white/[0.05] text-white/62 hover:bg-white/10 hover:text-white"}`} type="button" onClick={() => setSport(item)}>
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={() => void loadMatches(true)} disabled={refreshing}>
+                    <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />
+                    Refresh
+                  </Button>
+                </div>
+                <section className="grid content-start gap-3 md:grid-cols-2">
+                  {loading ? <SkeletonCards /> : null}
+                  {!loading && visibleMatches.map((match) => <MatchCard key={match.id} match={match} onEnter={() => setSelectedMatch(match)} />)}
+                  {!loading && !visibleMatches.length ? (
+                    <Card className="p-6 text-center md:col-span-2">
+                      <p className="font-black text-white">No arena matches found.</p>
+                      <p className="mt-2 text-sm text-muted">No live or upcoming {sport === "All" ? "arena" : sport.toLowerCase()} matches are available right now. Refresh or switch sports.</p>
+                    </Card>
+                  ) : null}
+                </section>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => void loadMatches(true)} disabled={refreshing}>
-                <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />
-                Refresh
-              </Button>
-            </div>
-            <section className="grid gap-3 md:grid-cols-2">
-              {loading ? <SkeletonCards /> : null}
-              {!loading && visibleMatches.map((match) => <MatchCard key={match.id} match={match} onEnter={() => setSelectedMatch(match)} />)}
-              {!loading && !visibleMatches.length ? (
-                <Card className="p-6 text-center md:col-span-2">
-                  <p className="font-black text-white">No arena matches found.</p>
-                  <p className="mt-2 text-sm text-muted">No live or upcoming {sport === "All" ? "arena" : sport.toLowerCase()} matches are available right now. Refresh or switch sports.</p>
-                </Card>
-              ) : null}
+              <aside className="grid content-start gap-4">
+                <MySlips slips={slips} onExit={(slip) => void exitSlip(slip)} onClaim={(slip) => void claimSlip(slip)} busy={isWriting} />
+                {isVaultOwner ? <VaultAdminPanel busy={isWriting} onFund={(amount, asset) => void fundVault(amount, asset)} onWithdraw={(amount, asset) => void withdrawVault(amount, asset)} /> : null}
+                {isVaultOwner || isVaultResolver ? <ResolverPanel slips={slips} busy={isWriting} onResolve={(matchId, result) => void resolveSlipMatch(matchId, result)} /> : null}
+                <ArenaHeadlines news={news} />
+                <ArenaLeaderboard slips={slips} stats={stats} sport={sport} range={range} setRange={setRange} />
+              </aside>
             </section>
-          </div>
-          <aside className="grid content-start gap-4">
-            <MySlips slips={slips} onExit={(slip) => void exitSlip(slip)} onClaim={(slip) => void claimSlip(slip)} busy={isWriting} />
-            {isVaultOwner ? <VaultAdminPanel busy={isWriting} onFund={(amount, asset) => void fundVault(amount, asset)} onWithdraw={(amount, asset) => void withdrawVault(amount, asset)} /> : null}
-            {isVaultOwner || isVaultResolver ? <ResolverPanel slips={slips} busy={isWriting} onResolve={(matchId, result) => void resolveSlipMatch(matchId, result)} /> : null}
-            <ArenaHeadlines news={news} />
-            <ArenaLeaderboard slips={slips} stats={stats} sport={sport} range={range} setRange={setRange} />
-          </aside>
-        </section>
+          </>
+        )}
       </div>
       {selectedMatch ? (
         <ChallengeModal match={selectedMatch} isConnected={isConnected} busy={isWriting} onClose={() => setSelectedMatch(null)} onConnect={() => void connectWallet()} onLock={(input) => void lockChallenge(input)} />
@@ -662,6 +680,7 @@ function Segment({ label, options, value, onChange }: { label: string; options: 
 
 function MySlips({ slips, busy, onExit, onClaim }: { slips: ArenaSlip[]; busy: boolean; onExit: (slip: ArenaSlip) => void; onClaim: (slip: ArenaSlip) => void }) {
   const [tab, setTab] = useState<"Active" | "Past">("Active");
+  const [selectedSlip, setSelectedSlip] = useState<ArenaSlip | null>(null);
   const filtered = slips.filter((slip) => (tab === "Active" ? slip.status === "PENDING" || slip.status === "LOCKED" : slip.status !== "PENDING" && slip.status !== "LOCKED"));
   return (
     <Card className="p-4">
@@ -677,26 +696,106 @@ function MySlips({ slips, busy, onExit, onClaim }: { slips: ArenaSlip[]; busy: b
       </div>
       <div className="mt-4 grid gap-2">
         {filtered.map((slip) => (
-          <div key={slip.id} className="rounded-lg border border-white/10 bg-black/25 p-3">
+          <button key={slip.id} className="rounded-lg border border-white/10 bg-black/25 p-3 text-left transition hover:border-[#18e3bd]/35 hover:bg-[#18e3bd]/10" type="button" onClick={() => setSelectedSlip(slip)}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-black text-white">{slip.matchName}</p>
                 <p className="mt-1 text-xs text-muted">{formatAmount(slip.amountUnits, slip.asset)} {slip.asset} - {outcomeLabels[slip.predictedOutcome]}</p>
+                <p className="mt-1 text-xs font-bold text-white/50">{slipStatusLabel(slip)}</p>
               </div>
               <Badge>{slip.status}</Badge>
             </div>
             {slip.actualResult ? <p className="mt-2 text-xs text-white/60">Actual: {outcomeLabels[slip.actualResult]}</p> : null}
             {slip.txHash ? <a className="mt-2 inline-flex text-xs font-bold text-[#18e3bd]" href={`${X_LAYER_EXPLORER_URL}/tx/${slip.txHash}`} target="_blank" rel="noreferrer">View tx</a> : null}
             <div className="mt-3 flex gap-2">
-              {slip.status === "LOCKED" ? <Button size="sm" variant="secondary" disabled={busy} onClick={() => onExit(slip)}>Withdraw to Wallet</Button> : null}
-              {slip.status === "WON" && !slip.rewardClaimed ? <Button size="sm" disabled={busy} onClick={() => onClaim(slip)}>Claim Reward</Button> : null}
+              {slip.status === "LOCKED" ? <Button size="sm" variant="secondary" disabled={busy} onClick={(event) => {
+                event.stopPropagation();
+                onExit(slip);
+              }}>Withdraw to Wallet</Button> : null}
+              {slip.status === "WON" && !slip.rewardClaimed ? <Button size="sm" disabled={busy} onClick={(event) => {
+                event.stopPropagation();
+                onClaim(slip);
+              }}>Claim Reward</Button> : null}
               {slip.rewardClaimed ? <span className="inline-flex items-center gap-1 text-xs font-bold text-gain"><CheckCircle2 size={14} />Reward claimed</span> : null}
             </div>
-          </div>
+          </button>
         ))}
         {!filtered.length ? <p className="rounded-lg border border-white/10 bg-black/25 p-4 text-sm text-muted">No {tab.toLowerCase()} challenge slips yet.</p> : null}
       </div>
+      {selectedSlip ? <SlipDetailsModal slip={selectedSlip} busy={busy} onClose={() => setSelectedSlip(null)} onExit={onExit} onClaim={onClaim} /> : null}
     </Card>
+  );
+}
+
+function slipStatusLabel(slip: ArenaSlip) {
+  if (slip.status === "PENDING") return "Pending wallet confirmation";
+  if (slip.status === "LOCKED") return "In progress / awaiting final result";
+  if (slip.status === "WON") return "Won";
+  if (slip.status === "LOST") return "Lost";
+  return "Exited";
+}
+
+function SlipDetailsModal({
+  slip,
+  busy,
+  onClose,
+  onExit,
+  onClaim
+}: {
+  slip: ArenaSlip;
+  busy: boolean;
+  onClose: () => void;
+  onExit: (slip: ArenaSlip) => void;
+  onClaim: (slip: ArenaSlip) => void;
+}) {
+  const rows = [
+    ["Status", slipStatusLabel(slip)],
+    ["Prediction", outcomeLabels[slip.predictedOutcome]],
+    ["Actual result", slip.actualResult ? outcomeLabels[slip.actualResult] : "Not resolved yet"],
+    ["Stake", `${formatAmount(slip.amountUnits, slip.asset)} ${slip.asset}`],
+    ["Confidence", slip.confidence],
+    ["Sport", slip.sport],
+    ["League", slip.league ?? "Unknown"],
+    ["Kickoff", slip.matchStartTime ? formatMatchTime(slip.matchStartTime) : "Unknown"],
+    ["Match state", slip.matchStatus ?? "Unknown"],
+    ["Chain slip ID", slip.chainSlipId ?? "Indexing"],
+    ["Created", new Date(slip.createdAt).toLocaleString()]
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[95] grid place-items-end bg-black/70 p-3 backdrop-blur-md sm:place-items-center" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <Card className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#18e3bd]">Prediction Slip</p>
+            <h2 className="mt-2 text-2xl font-black text-white">{slip.matchName}</h2>
+            <p className="mt-1 text-sm text-muted">{slipStatusLabel(slip)}</p>
+          </div>
+          <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close slip details">
+            <X size={18} aria-hidden="true" />
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          {rows.map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-white/10 bg-black/25 p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/38">{label}</p>
+              <p className="mt-1 break-words text-sm font-bold text-white">{value}</p>
+            </div>
+          ))}
+        </div>
+        {slip.reasoning ? (
+          <div className="mt-3 rounded-lg border border-white/10 bg-black/25 p-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/38">Reasoning</p>
+            <p className="mt-1 text-sm leading-6 text-white/70">{slip.reasoning}</p>
+          </div>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {slip.txHash ? <a className="inline-flex min-h-10 items-center rounded-lg border border-white/10 bg-white/[0.06] px-4 text-sm font-black text-[#18e3bd] transition hover:bg-white/12" href={`${X_LAYER_EXPLORER_URL}/tx/${slip.txHash}`} target="_blank" rel="noreferrer">View transaction</a> : null}
+          {slip.status === "LOCKED" ? <Button variant="secondary" disabled={busy} onClick={() => onExit(slip)}>Withdraw to Wallet</Button> : null}
+          {slip.status === "WON" && !slip.rewardClaimed ? <Button disabled={busy} onClick={() => onClaim(slip)}>Claim Reward</Button> : null}
+        </div>
+      </Card>
+    </div>
   );
 }
 
